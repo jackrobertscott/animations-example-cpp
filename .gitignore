@@ -1,0 +1,5 @@
+*.o
+**/assimp_log.txt
+**/libassimp*
+**/scene-start
+**/scene-start.dSYM
