@@ -200,17 +200,17 @@ mat2 camRotZ()
 
 static void adjustCamrotsideViewdist(vec2 cv)
 {
-    cout << cv << endl;
+    //cout << cv << endl;
     if(cv[0] < 10 && cv[1] < 10 && cv[0] > -10 && cv[1] > -10)
     {
       camRotSidewaysDeg+=cv[0]; viewDist+=cv[1];
     }
-    cout << camRotSidewaysDeg << endl;
+    //cout << camRotSidewaysDeg << endl;
 }
 
 static void adjustcamSideUp(vec2 su)
 {
-    //cout << su << endl;
+
     if(su[0] < 10 && su[1] < 10 && su[0] > -10 && su[1] > -10)
     {
       camRotSidewaysDeg+=su[0]; camRotUpAndOverDeg+=su[1];
@@ -221,12 +221,20 @@ static void adjustcamSideUp(vec2 su)
 
 static void adjustLocXZ(vec2 xz)
 {
+
+  if(xz[0] < 0.5 && xz[1] < 0.5 && xz[0] > -0.5 && xz[1] > -0.5)
+  {
     sceneObjs[toolObj].loc[0]+=xz[0]; sceneObjs[toolObj].loc[2]+=xz[1];
+  }
 }
 
 static void adjustScaleY(vec2 sy)
 {
+  //cout << sy << endl;
+  if(sy[0] < 0.01 && sy[1] < 0.1 && sy[0] > -0.01 && sy[1] > -0.1)
+  {
     sceneObjs[toolObj].scale+=sy[0]; sceneObjs[toolObj].loc[1]+=sy[1];
+  }
 }
 
 
@@ -349,7 +357,7 @@ void drawMesh(SceneObject sceneObj)
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale);
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateX(-sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) ;
 
 
     // Set the model-view matrix for the shaders
@@ -508,14 +516,23 @@ static void materialMenu(int id)
 
 static void adjustAngleYX(vec2 angle_yx)
 {
+
+
+  if(angle_yx[0] < 15 && angle_yx[1] < 15 && angle_yx[0] > -15 && angle_yx[1] > -15)
+  {
     sceneObjs[currObject].angles[1]+=angle_yx[0];
     sceneObjs[currObject].angles[0]+=angle_yx[1];
+  }
 }
 
 static void adjustAngleZTexscale(vec2 az_ts)
 {
-    sceneObjs[currObject].angles[2]+=az_ts[0];
-    sceneObjs[currObject].texScale+=az_ts[1];
+    cout << az_ts << endl;
+    if(az_ts[0] < 15 && az_ts[1] < 15 && az_ts[0] > -15 && az_ts[1] > -15)
+    {
+      sceneObjs[currObject].angles[2]+=az_ts[0];
+      sceneObjs[currObject].texScale+=az_ts[1];
+    }
 }
 
 static void mainmenu(int id)
