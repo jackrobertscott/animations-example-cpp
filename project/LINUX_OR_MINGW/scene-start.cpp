@@ -174,10 +174,10 @@ static void mouseClickOrScroll(int button, int state, int x, int y)
     else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) deactivateTool();
 
     else if (button == 3) { // scroll up
-        viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.005;
+        viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
     }
     else if (button == 4) { // scroll down
-        viewDist = (viewDist < 0.0 ? viewDist : viewDist*1.25) + 0.005;
+        viewDist = (viewDist < 0.0 ? viewDist : viewDist*1.25) + 0.05;
     }
 }
 
@@ -357,7 +357,7 @@ void drawMesh(SceneObject sceneObj)
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateX(-sceneObj.angles[0]) * RotateY(sceneObj.angles[1]) ;
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2])* RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
 
 
     // Set the model-view matrix for the shaders
@@ -386,7 +386,7 @@ void display( void )
     // Set the view matrix. To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.0, -viewDist) * RotateY(camRotSidewaysDeg) * RotateX(camRotUpAndOverDeg);
+    view = Translate(0.0, 0.0, -viewDist)  * RotateX(camRotUpAndOverDeg)* RotateY(camRotSidewaysDeg);
 
 
     SceneObject lightObj1 = sceneObjs[1];
@@ -457,6 +457,26 @@ static void adjustBlueBrightness(vec2 bl_br)
     sceneObjs[toolObj].brightness+=bl_br[1];
 }
 
+static void adjustAmbDif(vec2 am)
+{
+    sceneObjs[toolObj].ambient+=am[0];
+    sceneObjs[toolObj].diffuse+=am[1];
+    //cout << sceneObjs[toolObj].ambient << endl;
+    //cout << sceneObjs[toolObj].diffuse << endl;
+}
+
+static void adjustSpecShine(vec2 ss)
+{
+    sceneObjs[toolObj].specular+=ss[0];
+    sceneObjs[toolObj].shine+=ss[1];
+    cout << sceneObjs[toolObj].specular << endl;
+  //  cout << sceneObjs[toolObj].shine << endl;
+}
+
+
+
+
+
 static void lightMenu(int id)
 {
     deactivateTool();
@@ -508,6 +528,11 @@ static void materialMenu(int id)
         setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                          adjustBlueBrightness, mat2(1, 0, 0, 1) );
     }
+    if (id==20) {
+        toolObj = currObject;
+        setToolCallbacks(adjustAmbDif, mat2(2, 0, 0, 4),
+                         adjustSpecShine, mat2(2, 0, 0, 10) );
+    }
     // You'll need to fill in the remaining menu items here.
     else {
         printf("Error in materialMenu\n");
@@ -527,7 +552,7 @@ static void adjustAngleYX(vec2 angle_yx)
 
 static void adjustAngleZTexscale(vec2 az_ts)
 {
-    cout << az_ts << endl;
+    //cout << az_ts << endl;
     if(az_ts[0] < 15 && az_ts[1] < 15 && az_ts[0] > -15 && az_ts[1] > -15)
     {
       sceneObjs[currObject].angles[2]+=az_ts[0];
@@ -558,7 +583,7 @@ static void makeMenu()
 
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All",10);
-    glutAddMenuEntry("UNIMPLEMENTED: Ambient/Diffuse/Specular/Shine",20);
+    glutAddMenuEntry("Ambient/Diffuse/Specular/Shine",20);
 
     int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
     int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
