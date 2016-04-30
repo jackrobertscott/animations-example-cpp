@@ -26,9 +26,9 @@ GLuint shaderProgram; // The number identifying the GLSL shader program
 GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
 GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
 
-static float viewDist = 1.5; // Distance from the camera to the centre of the scene
+static float viewDist = 1.0; // Distance from the camera to the centre of the scene
 static float camRotSidewaysDeg=0; // rotates the camera sideways around the centre
-static float camRotUpAndOverDeg=20; // rotates the camera up and over the centre.
+static float camRotUpAndOverDeg=0; // rotates the camera up and over the centre.
 
 mat4 projection; // Projection matrix - set in the reshape function
 mat4 view; // View matrix - set in the display function.
@@ -200,7 +200,7 @@ mat2 camRotZ()
 
 static void adjustCamrotsideViewdist(vec2 cv)
 {
-    cout << cv << endl;
+    // cout << cv << endl;
     camRotSidewaysDeg+=cv[0]; viewDist+=cv[1];
 }
 
@@ -368,7 +368,7 @@ void display( void )
     // Set the view matrix.  To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(-0.0, -0.5, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
+    view = Translate(-0.5, -0.5, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
     SceneObject lightObj1 = sceneObjs[1];
     vec4 lightPosition = view * lightObj1.loc ;
@@ -606,7 +606,7 @@ void reshape( int width, int height )
     //         that the same part of the scene is visible across the width of
     //         the window.
 
-    GLfloat nearDist = 0.2;
+    GLfloat nearDist = 0.001;
     projection = Frustum(-nearDist*(float)width/(float)height,
                          nearDist*(float)width/(float)height,
                          -nearDist, nearDist,
