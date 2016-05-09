@@ -26,7 +26,7 @@ GLuint shaderProgram; // The number identifying the GLSL shader program
 GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
 GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
 
-static float viewDist = 1.5; // Distance from the camera to the centre of the scene
+static float viewDist = 5; // Distance from the camera to the centre of the scene
 static float camRotSidewaysDeg=0; // rotates the camera sideways around the centre
 static float camRotUpAndOverDeg=20; // rotates the camera up and over the centre.
 
@@ -386,7 +386,7 @@ void display( void )
     // Set the view matrix. To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.0, -viewDist)  * RotateX(camRotUpAndOverDeg)* RotateY(camRotSidewaysDeg);
+    view = Translate(0.0, 0.0, -viewDist)  * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
 
     SceneObject lightObj1 = sceneObjs[1];
@@ -469,8 +469,8 @@ static void adjustSpecShine(vec2 ss)
 {
     sceneObjs[toolObj].specular+=ss[0];
     sceneObjs[toolObj].shine+=ss[1];
-    cout << sceneObjs[toolObj].specular << endl;
-  //  cout << sceneObjs[toolObj].shine << endl;
+  //  cout << sceneObjs[toolObj].specular << endl;
+    cout << sceneObjs[toolObj].shine << endl;
 }
 
 
@@ -530,8 +530,8 @@ static void materialMenu(int id)
     }
     if (id==20) {
         toolObj = currObject;
-        setToolCallbacks(adjustAmbDif, mat2(2, 0, 0, 4),
-                         adjustSpecShine, mat2(2, 0, 0, 10) );
+        setToolCallbacks(adjustAmbDif, mat2(1, 0, 0, 1),
+                         adjustSpecShine, mat2(10, 0, 0, 30) );
     }
     // You'll need to fill in the remaining menu items here.
     else {
@@ -642,11 +642,24 @@ void reshape( int width, int height )
     //         that the same part of the scene is visible across the width of
     //         the window.
 
-    GLfloat nearDist = 0.2;
-    projection = Frustum(-nearDist*(float)width/(float)height,
-                         nearDist*(float)width/(float)height,
-                         -nearDist, nearDist,
-                         nearDist, 100.0);
+    GLfloat nearDist = 0.001;
+    if(width >= height)
+    {
+      projection = Frustum(-nearDist*(float)width/(float)height,
+                           nearDist*(float)width/(float)height,
+                           -nearDist,
+                            nearDist,
+                           nearDist, 100.0);
+    }
+    if(height > width)
+    {
+      projection = Frustum(-nearDist,
+                           nearDist,
+                           -nearDist*(float)height/(float)width,
+                            nearDist*(float)height/(float)width,
+                           nearDist, 100.0);
+    }
+
 }
 
 //----------------------------------------------------------------------------

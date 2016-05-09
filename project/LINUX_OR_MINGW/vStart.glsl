@@ -19,13 +19,16 @@ void main()
     vec3 pos = (ModelView * vpos).xyz;
 
 
-    // The vector to the light from the vertex    
+    // The vector to the light from the vertex
     vec3 Lvec = LightPosition.xyz - pos;
 
     // Unit direction vectors for Blinn-Phong shading calculation
     vec3 L = normalize( Lvec );   // Direction to the light source
     vec3 E = normalize( -pos );   // Direction to the eye/camera
     vec3 H = normalize( L + E );  // Halfway vector
+
+    float distance = length(Lvec);
+    distance = 1.0 / (1.0 + distance + distance*distance); //1/(a+bd+cd^2)
 
     // Transform vertex normal into eye coordinates (assumes scaling
     // is uniform across dimensions)
@@ -35,18 +38,18 @@ void main()
     vec3 ambient = AmbientProduct;
 
     float Kd = max( dot(L, N), 0.0 );
-    vec3  diffuse = Kd*DiffuseProduct;
+    vec3  diffuse = Kd*DiffuseProduct + distance;
 
     float Ks = pow( max(dot(N, H), 0.0), Shininess );
-    vec3  specular = Ks * SpecularProduct;
-    
+    vec3  specular = Ks * SpecularProduct + distance;
+
     if (dot(L, N) < 0.0 ) {
 	specular = vec3(0.0, 0.0, 0.0);
-    } 
+    }
 
     // globalAmbient is independent of distance from the light source
     vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
-    color.rgb = globalAmbient  + ambient + diffuse + specular;
+    color.rgb = globalAmbient + ambient + diffuse + specular;
     color.a = 1.0;
 
     gl_Position = Projection * ModelView * vpos;
