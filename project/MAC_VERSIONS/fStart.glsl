@@ -29,7 +29,7 @@ void main()
     vec3  diffuse = Kd*DiffuseProduct + dist;
 
     float Ks = pow( max(dot(N, H), 0.0), Shininess );
-    vec3  specular = Ks * SpecularProduct + dist;
+    vec3 specular = vec3(0.1, 0.1, 0.1) * Ks * SpecularProduct + dist;
 
     if (dot(L, N) < 0.0 ) {
     specular = vec3(0.0, 0.0, 0.0);
