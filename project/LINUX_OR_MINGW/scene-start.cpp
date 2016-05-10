@@ -324,6 +324,12 @@ void init( void )
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
 
+    addObject(55); // Sphere for the first light
+    sceneObjs[2].loc = vec4(0.0, 4.0, 0.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 2.0; // The light's brightness is 5 times this (below).
+
     addObject(rand() % numMeshes); // A test mesh
 
     // We need to enable the depth test to discard fragments that
@@ -390,16 +396,20 @@ void display( void )
 
 
     SceneObject lightObj1 = sceneObjs[1];
-    vec4 lightPosition = view * lightObj1.loc ; //RotateX(camRotSidewaysDeg) *
+    SceneObject lightObj2 = sceneObjs[2];
 
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"),
-                  1, lightPosition);
+    vec4 lightPosition = view * lightObj1.loc ; //RotateX(camRotSidewaysDeg) *
+    vec4 light2Position = view * lightObj2.loc ;
+
+    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition);
+    glUniform4fv( glGetUniformLocation(shaderProgram, "Light2Position"), 1, light2Position);
+
     CheckError();
 
     for (int i=0; i < nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
+        vec3 rgb = so.rgb * lightObj1.rgb * lightObj2.rgb * so.brightness * lightObj1.brightness * lightObj2.brightness * 2.0;
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb );
         CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
@@ -490,6 +500,16 @@ static void lightMenu(int id)
         toolObj = 1;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
+    }
+    else if (id == 80) {
+      toolObj = 2;
+      setToolCallbacks(adjustLocXZ, camRotZ(),
+                       adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
+    }
+    else if (id >= 81 && id <= 84) {
+      toolObj = 2;
+      setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                       adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
     else {
         printf("Error in lightMenu\n");
