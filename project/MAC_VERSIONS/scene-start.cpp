@@ -79,6 +79,15 @@ int nObjects = 0;    // How many objects are currenly in the scene.
 int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
 
+bool mouseEngaged = false;
+
+static bool avoidSkip() {
+  if (!mouseEngaged) {
+    mouseEngaged = true;
+    return false;
+  } else return true;
+}
+
 //----------------------------------------------------------------------------
 //
 // Loads a texture by number, and binds it for later use.
@@ -175,10 +184,15 @@ static void mouseClickOrScroll(int button, int state, int x, int y)
         if (glutGetModifiers()!=GLUT_ACTIVE_SHIFT) activateTool(button);
         else activateTool(GLUT_LEFT_BUTTON);
     }
-    else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) deactivateTool();
-    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) { activateTool(button); }
-    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) deactivateTool();
-
+    else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) {
+      deactivateTool();
+      mouseEngaged = false;
+    }
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) activateTool(button);
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) {
+      deactivateTool();
+      mouseEngaged = false;
+    }
     else if (button == 3) { // scroll up
         viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
     }
@@ -199,7 +213,9 @@ static void mousePassiveMotion(int x, int y)
 
 mat2 camRotZ()
 {
-    return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
+    if (avoidSkip()) {
+      return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
+    }
 }
 
 //------callback functions for doRotate below and later-----------------------
@@ -207,22 +223,34 @@ mat2 camRotZ()
 static void adjustCamrotsideViewdist(vec2 cv)
 {
     // cout << cv << endl;
-    camRotSidewaysDeg+=cv[0]; viewDist+=cv[1];
+    if (avoidSkip()) {
+      camRotSidewaysDeg+=cv[0];
+      viewDist+=cv[1];
+    }
 }
 
 static void adjustcamSideUp(vec2 su)
 {
-    camRotSidewaysDeg+=su[0]; camRotUpAndOverDeg+=su[1];
+    if (avoidSkip()) {
+      camRotSidewaysDeg+=su[0];
+      camRotUpAndOverDeg+=su[1];
+    }
 }
 
 static void adjustLocXZ(vec2 xz)
 {
-    sceneObjs[toolObj].loc[0]+=xz[0]; sceneObjs[toolObj].loc[2]+=xz[1];
+    if (avoidSkip()) {
+      sceneObjs[toolObj].loc[0]+=xz[0];
+      sceneObjs[toolObj].loc[2]+=xz[1];
+    }
 }
 
 static void adjustScaleY(vec2 sy)
 {
-    sceneObjs[toolObj].scale+=sy[0]; sceneObjs[toolObj].loc[1]+=sy[1];
+    if (avoidSkip()) {
+      sceneObjs[toolObj].scale+=sy[0];
+      sceneObjs[toolObj].loc[1]+=sy[1];
+    }
 }
 
 
@@ -380,7 +408,7 @@ void display( void )
     // Set the view matrix.  To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.5, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
+    view = Translate(0.0, 0.0, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
     SceneObject lightObj1 = sceneObjs[1];
     SceneObject lightObj2 = sceneObjs[2];
