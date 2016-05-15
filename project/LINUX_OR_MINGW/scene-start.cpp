@@ -1,3 +1,10 @@
+/**
+  * CITS3003 Project
+  * Tahmer Hijjawi 21130321
+  * Jack Scott	21504053
+  * 2016 Sem 1
+  */
+
 
 #include "Angel.h"
 
@@ -73,6 +80,14 @@ int nObjects = 0;    // How many objects are currenly in the scene.
 int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
 
+bool mouseEngaged = false;
+
+bool avoidSkip() {
+  if(!mouseEngaged) {
+    mouseEngaged = true;
+    return false;
+  } else return true;
+}
 //----------------------------------------------------------------------------
 //
 // Loads a texture by number, and binds it for later use.
@@ -169,10 +184,15 @@ static void mouseClickOrScroll(int button, int state, int x, int y)
         if (glutGetModifiers()!=GLUT_ACTIVE_SHIFT) activateTool(button);
         else activateTool(GLUT_LEFT_BUTTON);
     }
-    else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) deactivateTool();
-    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) { activateTool(button); }
-    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) deactivateTool();
-
+    else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) {
+      deactivateTool();
+      mouseEngaged = false;
+    }
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) activateTool(button);
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) {
+      deactivateTool();
+      mouseEngaged = false;
+    }
     else if (button == 3) { // scroll up
         viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
     }
@@ -192,51 +212,43 @@ static void mousePassiveMotion(int x, int y)
 //----------------------------------------------------------------------------
 
 mat2 camRotZ()
-{
-    return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
-}
-
-//------callback functions for doRotate below and later-----------------------
-
-static void adjustCamrotsideViewdist(vec2 cv)
-{
-    //cout << cv << endl;
-    if(cv[0] < 10 && cv[1] < 10 && cv[0] > -10 && cv[1] > -10)
-    {
-      camRotSidewaysDeg+=cv[0]; viewDist+=cv[1];
-    }
-    //cout << camRotSidewaysDeg << endl;
-}
-
-static void adjustcamSideUp(vec2 su)
-{
-
-    if(su[0] < 10 && su[1] < 10 && su[0] > -10 && su[1] > -10)
-    {
-      camRotSidewaysDeg+=su[0]; camRotUpAndOverDeg+=su[1];
-    }
-    //cout << camRotSidewaysDeg << endl;
-
-}
-
-static void adjustLocXZ(vec2 xz)
-{
-
-  if(xz[0] < 0.5 && xz[1] < 0.5 && xz[0] > -0.5 && xz[1] > -0.5)
   {
-    sceneObjs[toolObj].loc[0]+=xz[0]; sceneObjs[toolObj].loc[2]+=xz[1];
+     return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
   }
-}
 
-static void adjustScaleY(vec2 sy)
-{
-  //cout << sy << endl;
-  if(sy[0] < 0.01 && sy[1] < 0.1 && sy[0] > -0.01 && sy[1] > -0.1)
+  //------callback functions for doRotate below and later-----------------------
+
+  static void adjustCamrotsideViewdist(vec2 cv)
   {
-    sceneObjs[toolObj].scale+=sy[0]; sceneObjs[toolObj].loc[1]+=sy[1];
+     if (avoidSkip()) {
+       camRotSidewaysDeg+=cv[0];
+       viewDist+=cv[1];
+     }
   }
-}
 
+  static void adjustcamSideUp(vec2 su)
+  {
+     if (avoidSkip()) {
+       camRotSidewaysDeg+=su[0];
+       camRotUpAndOverDeg+=su[1];
+     }
+  }
+
+  static void adjustLocXZ(vec2 xz)
+  {
+     if (avoidSkip()) {
+       sceneObjs[toolObj].loc[0]+=xz[0];
+       sceneObjs[toolObj].loc[2]+=xz[1];
+     }
+  }
+
+  static void adjustScaleY(vec2 sy)
+  {
+     if (avoidSkip()) {
+       sceneObjs[toolObj].scale+=sy[0];
+       sceneObjs[toolObj].loc[1]+=sy[1];
+     }
+  }
 
 //----------------------------------------------------------------------------
 //------Set the mouse buttons to rotate the camera----------------------------
@@ -324,11 +336,11 @@ void init( void )
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
 
-    addObject(55); // Sphere for the first light
-    sceneObjs[2].loc = vec4(0.0, 4.0, 0.0, 1.0);
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
     sceneObjs[2].scale = 0.2;
     sceneObjs[2].texId = 0; // Plain texture
-    sceneObjs[2].brightness = 2.0; // The light's brightness is 5 times this (below).
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -398,11 +410,11 @@ void display( void )
     SceneObject lightObj1 = sceneObjs[1];
     SceneObject lightObj2 = sceneObjs[2];
 
-    vec4 lightPosition = view * lightObj1.loc ; //RotateX(camRotSidewaysDeg) *
-    vec4 light2Position = view * lightObj2.loc ;
+    vec4 lightPosition1 = view * lightObj1.loc ; //RotateX(camRotSidewaysDeg) *
+    vec4 lightPosition2 = view * lightObj2.loc ;
 
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"), 1, lightPosition);
-    glUniform4fv( glGetUniformLocation(shaderProgram, "Light2Position"), 1, light2Position);
+    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1);
+    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2);
 
     CheckError();
 
@@ -413,9 +425,11 @@ void display( void )
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb );
         CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
-        glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * rgb );
+        glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
         CheckError();
+
+        glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
 
         drawMesh(sceneObjs[i]);
     }
@@ -451,41 +465,65 @@ static void groundMenu(int id)
 
 static void adjustBrightnessY(vec2 by)
 {
-    sceneObjs[toolObj].brightness+=by[0];
+  if (avoidSkip()) {
     sceneObjs[toolObj].loc[1]+=by[1];
+    sceneObjs[toolObj].brightness+=by[0];
+    // add limits to brightness levels
+  }
+//  if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
+//  if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
 }
 
 static void adjustRedGreen(vec2 rg)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].rgb[0]+=rg[0];
     sceneObjs[toolObj].rgb[1]+=rg[1];
+  }
+//  if (sceneObjs[toolObj].rgb[0] > 1.0) sceneObjs[toolObj].rgb[0] = 1.0;
+//  if (sceneObjs[toolObj].rgb[0] < 0.0) sceneObjs[toolObj].rgb[0] = 0.0;
+//  if (sceneObjs[toolObj].rgb[1] > 1.0) sceneObjs[toolObj].rgb[1] = 1.0;
+//  if (sceneObjs[toolObj].rgb[1] < 0.0) sceneObjs[toolObj].rgb[1] = 0.0;
 }
+
 
 static void adjustBlueBrightness(vec2 bl_br)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].rgb[2]+=bl_br[0];
     sceneObjs[toolObj].brightness+=bl_br[1];
+  }
+//  if (sceneObjs[toolObj].rgb[2] > 1.0) sceneObjs[toolObj].rgb[2] = 1.0;
+//  if (sceneObjs[toolObj].rgb[2] < 0.0) sceneObjs[toolObj].rgb[2] = 0.0;
+//  if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
+//  if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
+
+
 }
 
-static void adjustAmbDif(vec2 am)
+static void adjustAmbDif(vec2 am_df)
 {
-    sceneObjs[toolObj].ambient+=am[0];
-    sceneObjs[toolObj].diffuse+=am[1];
-    //cout << sceneObjs[toolObj].ambient << endl;
-    //cout << sceneObjs[toolObj].diffuse << endl;
+  if (avoidSkip()) {
+    sceneObjs[toolObj].ambient+=(am_df[0] * 10);
+    sceneObjs[toolObj].diffuse+=(am_df[1] * 10);
+  }
+//  if (sceneObjs[toolObj].ambient > 1.0) sceneObjs[toolObj].ambient = 1.0;
+//  if (sceneObjs[toolObj].ambient < 0.0) sceneObjs[toolObj].ambient = 0.0;
+//  if (sceneObjs[toolObj].diffuse > 1.0) sceneObjs[toolObj].diffuse = 1.0;
+//  if (sceneObjs[toolObj].diffuse < 0.0) sceneObjs[toolObj].diffuse = 0.0;
+
 }
 
-static void adjustSpecShine(vec2 ss)
+static void adjustSpecShine(vec2 sp_sh)
 {
-    sceneObjs[toolObj].specular+=ss[0];
-    sceneObjs[toolObj].shine+=ss[1];
-  //  cout << sceneObjs[toolObj].specular << endl;
-    cout << sceneObjs[toolObj].shine << endl;
+  if (avoidSkip()) {
+    sceneObjs[toolObj].specular+=(sp_sh[0] * 5);
+    sceneObjs[toolObj].shine+=(sp_sh[1] * 5);
+  }
+  if (sceneObjs[toolObj].specular < 0.0) sceneObjs[toolObj].specular = 0.0;
+  if (sceneObjs[toolObj].shine > 128) sceneObjs[toolObj].shine = 128;
+  if (sceneObjs[toolObj].shine < 0.0) sceneObjs[toolObj].shine = 0.0;
 }
-
-
-
-
 
 static void lightMenu(int id)
 {
@@ -561,23 +599,20 @@ static void materialMenu(int id)
 
 static void adjustAngleYX(vec2 angle_yx)
 {
-
-
-  if(angle_yx[0] < 15 && angle_yx[1] < 15 && angle_yx[0] > -15 && angle_yx[1] > -15)
-  {
+  if (avoidSkip()) {
     sceneObjs[currObject].angles[1]+=angle_yx[0];
     sceneObjs[currObject].angles[0]+=angle_yx[1];
   }
+
 }
 
 static void adjustAngleZTexscale(vec2 az_ts)
 {
-    //cout << az_ts << endl;
-    if(az_ts[0] < 15 && az_ts[1] < 15 && az_ts[0] > -15 && az_ts[1] > -15)
-    {
-      sceneObjs[currObject].angles[2]+=az_ts[0];
-      sceneObjs[currObject].texScale+=az_ts[1];
-    }
+  if (avoidSkip()) {
+    sceneObjs[currObject].angles[2]+=az_ts[0];
+    sceneObjs[currObject].texScale+=az_ts[1];
+  }
+
 }
 
 static void mainmenu(int id)
