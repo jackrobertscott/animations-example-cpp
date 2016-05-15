@@ -468,10 +468,7 @@ static void adjustBrightnessY(vec2 by)
   if (avoidSkip()) {
     sceneObjs[toolObj].loc[1]+=by[1];
     sceneObjs[toolObj].brightness+=by[0];
-    // add limits to brightness levels
   }
-//  if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
-//  if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
 }
 
 static void adjustRedGreen(vec2 rg)
@@ -480,10 +477,6 @@ static void adjustRedGreen(vec2 rg)
     sceneObjs[toolObj].rgb[0]+=rg[0];
     sceneObjs[toolObj].rgb[1]+=rg[1];
   }
-//  if (sceneObjs[toolObj].rgb[0] > 1.0) sceneObjs[toolObj].rgb[0] = 1.0;
-//  if (sceneObjs[toolObj].rgb[0] < 0.0) sceneObjs[toolObj].rgb[0] = 0.0;
-//  if (sceneObjs[toolObj].rgb[1] > 1.0) sceneObjs[toolObj].rgb[1] = 1.0;
-//  if (sceneObjs[toolObj].rgb[1] < 0.0) sceneObjs[toolObj].rgb[1] = 0.0;
 }
 
 
@@ -493,12 +486,6 @@ static void adjustBlueBrightness(vec2 bl_br)
     sceneObjs[toolObj].rgb[2]+=bl_br[0];
     sceneObjs[toolObj].brightness+=bl_br[1];
   }
-//  if (sceneObjs[toolObj].rgb[2] > 1.0) sceneObjs[toolObj].rgb[2] = 1.0;
-//  if (sceneObjs[toolObj].rgb[2] < 0.0) sceneObjs[toolObj].rgb[2] = 0.0;
-//  if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
-//  if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
-
-
 }
 
 static void adjustAmbDif(vec2 am_df)
@@ -507,11 +494,6 @@ static void adjustAmbDif(vec2 am_df)
     sceneObjs[toolObj].ambient+=(am_df[0] * 10);
     sceneObjs[toolObj].diffuse+=(am_df[1] * 10);
   }
-//  if (sceneObjs[toolObj].ambient > 1.0) sceneObjs[toolObj].ambient = 1.0;
-//  if (sceneObjs[toolObj].ambient < 0.0) sceneObjs[toolObj].ambient = 0.0;
-//  if (sceneObjs[toolObj].diffuse > 1.0) sceneObjs[toolObj].diffuse = 1.0;
-//  if (sceneObjs[toolObj].diffuse < 0.0) sceneObjs[toolObj].diffuse = 0.0;
-
 }
 
 static void adjustSpecShine(vec2 sp_sh)
