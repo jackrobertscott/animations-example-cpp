@@ -403,6 +403,9 @@ void display( void )
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
         CheckError();
 
+        // Part 2 - A: texture scale changes
+        glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
+
         drawMesh(sceneObjs[i]);
     }
 

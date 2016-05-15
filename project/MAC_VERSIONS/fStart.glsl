@@ -16,6 +16,7 @@ uniform mat4 Projection;
 uniform vec4 LightPosition1;
 uniform vec4 LightPosition2;
 uniform float Shininess;
+uniform float TexScale;
 
 void main()
 {
@@ -79,5 +80,5 @@ void main()
 
     vec3 colormod = globalAmbient + ambient + diffuse1 + diffuse2 + specular1 + specular2;
 
-    gl_FragColor = texture2D( texture, texCoord * 2.0 ) * vec4(colormod, 1.0); // 1.0 is the opacity
+    gl_FragColor = texture2D( texture, TexScale * texCoord * 2.0 ) * vec4(colormod, 1.0); // 1.0 is the opacity
 }
