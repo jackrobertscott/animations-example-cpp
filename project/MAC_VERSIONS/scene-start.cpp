@@ -1,3 +1,9 @@
+/**
+ * CITS3003 Project
+ * Tahmer Hijjawi 21130321
+ * Jack Scott	21504053
+ * 2016 Sem 1
+ */
 
 #include "Angel.h"
 
@@ -306,6 +312,12 @@ void init( void )
     sceneObjs[1].texId = 0; // Plain texture
     sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
 
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+
     addObject(rand() % numMeshes); // A test mesh
 
     // We need to enable the depth test to discard fragments that
@@ -368,22 +380,25 @@ void display( void )
     // Set the view matrix.  To start with this just moves the camera
     // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(-0.0, -0.5, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
+    view = Translate(0.0, 0.5, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
     SceneObject lightObj1 = sceneObjs[1];
-    vec4 lightPosition = view * lightObj1.loc ;
+    SceneObject lightObj2 = sceneObjs[2];
+    vec4 lightPosition1 = view * lightObj1.loc ;
+    vec4 lightPosition2 = view * lightObj2.loc ;
 
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition"),
-                  1, lightPosition);
+    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1);
+    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2);
     CheckError();
 
     for (int i=0; i < nObjects; i++) {
         SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * so.brightness * lightObj1.brightness * 2.0;
+        vec3 rgb = so.rgb * lightObj1.rgb * lightObj2.rgb * so.brightness * lightObj1.brightness * lightObj2.brightness * 2.0;
         glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb );
         CheckError();
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
+        // Part 1 - H: change colour rgb to just white
         glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
         CheckError();
@@ -423,6 +438,9 @@ static void groundMenu(int id)
 static void adjustBrightnessY(vec2 by)
 {
     sceneObjs[toolObj].brightness+=by[0];
+    // add limits to brightness levels
+    if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
+    if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
     sceneObjs[toolObj].loc[1]+=by[1];
 }
 
@@ -438,16 +456,16 @@ static void adjustBlueBrightness(vec2 bl_br)
     sceneObjs[toolObj].brightness+=bl_br[1];
 }
 
-static void adjustAmbientDiffuse(vec2 bl_br)
+static void adjustAmbientDiffuse(vec2 am_df)
 {
-    sceneObjs[toolObj].diffuse+=bl_br[0];
-    sceneObjs[toolObj].ambient+=bl_br[1];
+    sceneObjs[toolObj].diffuse+=am_df[0];
+    sceneObjs[toolObj].ambient+=am_df[1];
 }
 
-static void adjustSpecularShine(vec2 bl_br)
+static void adjustSpecularShine(vec2 sp_sh)
 {
-    sceneObjs[toolObj].specular+=bl_br[0];
-    sceneObjs[toolObj].shine+=bl_br[1];
+    sceneObjs[toolObj].specular+=sp_sh[0];
+    sceneObjs[toolObj].shine+=sp_sh[1];
     // cout << sceneObjs[toolObj].shine << endl;
 }
 
@@ -458,10 +476,19 @@ static void lightMenu(int id)
         toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
-
     }
     else if (id >= 71 && id <= 74) {
         toolObj = 1;
+        setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                         adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
+    }
+    else if (id == 80) {
+        toolObj = 2;
+        setToolCallbacks(adjustLocXZ, camRotZ(),
+                         adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
+    }
+    else if (id >= 81 && id <= 84) {
+        toolObj = 2;
         setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
@@ -543,7 +570,8 @@ static void mainmenu(int id)
 
 static void makeMenu()
 {
-    int objectId = createArrayMenu(numMeshes, objectMenuEntries, objectMenu);
+    // Correct number of meshes: (numMeshes - 1)
+    int objectId = createArrayMenu((numMeshes - 1), objectMenuEntries, objectMenu);
 
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All",10);
