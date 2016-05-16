@@ -185,13 +185,13 @@ static void mouseClickOrScroll(int button, int state, int x, int y)
         else activateTool(GLUT_LEFT_BUTTON);
     }
     else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) {
-      deactivateTool();
       mouseEngaged = false;
+      deactivateTool();
     }
     else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) activateTool(button);
     else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) {
-      deactivateTool();
       mouseEngaged = false;
+      deactivateTool();
     }
     else if (button == 3) { // scroll up
         viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
@@ -213,44 +213,42 @@ static void mousePassiveMotion(int x, int y)
 
 mat2 camRotZ()
 {
-    if (avoidSkip()) {
-      return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
-    }
+    return rotZ(-camRotSidewaysDeg) * mat2(10.0, 0, 0, -10.0);
 }
 
 //------callback functions for doRotate below and later-----------------------
 
 static void adjustCamrotsideViewdist(vec2 cv)
 {
-    // cout << cv << endl;
-    if (avoidSkip()) {
-      camRotSidewaysDeg+=cv[0];
-      viewDist+=cv[1];
-    }
+  // cout << cv << endl;
+  if (avoidSkip()) {
+    camRotSidewaysDeg+=cv[0];
+    viewDist+=cv[1];
+  }
 }
 
 static void adjustcamSideUp(vec2 su)
 {
-    if (avoidSkip()) {
-      camRotSidewaysDeg+=su[0];
-      camRotUpAndOverDeg+=su[1];
-    }
+  if (avoidSkip()) {
+    camRotSidewaysDeg+=su[0];
+    camRotUpAndOverDeg+=su[1];
+  }
 }
 
 static void adjustLocXZ(vec2 xz)
 {
-    if (avoidSkip()) {
-      sceneObjs[toolObj].loc[0]+=xz[0];
-      sceneObjs[toolObj].loc[2]+=xz[1];
-    }
+  if (avoidSkip()) {
+    sceneObjs[toolObj].loc[0]+=xz[0];
+    sceneObjs[toolObj].loc[2]+=xz[1];
+  }
 }
 
 static void adjustScaleY(vec2 sy)
 {
-    if (avoidSkip()) {
-      sceneObjs[toolObj].scale+=sy[0];
-      sceneObjs[toolObj].loc[1]+=sy[1];
-    }
+  if (avoidSkip()) {
+    sceneObjs[toolObj].scale+=sy[0];
+    sceneObjs[toolObj].loc[1]+=sy[1];
+  }
 }
 
 
@@ -468,36 +466,46 @@ static void groundMenu(int id)
 
 static void adjustBrightnessY(vec2 by)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].brightness+=by[0];
     // add limits to brightness levels
     if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
     if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
     sceneObjs[toolObj].loc[1]+=by[1];
+  }
 }
 
 static void adjustRedGreen(vec2 rg)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].rgb[0]+=rg[0];
     sceneObjs[toolObj].rgb[1]+=rg[1];
+  }
 }
 
 static void adjustBlueBrightness(vec2 bl_br)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].rgb[2]+=bl_br[0];
     sceneObjs[toolObj].brightness+=bl_br[1];
+  }
 }
 
 static void adjustAmbientDiffuse(vec2 am_df)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].diffuse+=am_df[0];
     sceneObjs[toolObj].ambient+=am_df[1];
+  }
 }
 
 static void adjustSpecularShine(vec2 sp_sh)
 {
+  if (avoidSkip()) {
     sceneObjs[toolObj].specular+=sp_sh[0];
     sceneObjs[toolObj].shine+=sp_sh[1];
     // cout << sceneObjs[toolObj].shine << endl;
+  }
 }
 
 static void lightMenu(int id)
@@ -572,14 +580,18 @@ static void materialMenu(int id)
 
 static void adjustAngleYX(vec2 angle_yx)
 {
+  if (avoidSkip()) {
     sceneObjs[currObject].angles[1]+=angle_yx[0];
     sceneObjs[currObject].angles[0]+=angle_yx[1];
+  }
 }
 
 static void adjustAngleZTexscale(vec2 az_ts)
 {
+  if (avoidSkip()) {
     sceneObjs[currObject].angles[2]+=az_ts[0];
     sceneObjs[currObject].texScale+=az_ts[1];
+  }
 }
 
 static void mainmenu(int id)
