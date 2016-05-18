@@ -19,6 +19,7 @@ uniform vec4 LightPosition1;
 uniform vec4 LightPosition2;
 uniform float Shininess;
 uniform float TexScale;
+uniform float Waves;
 
 void main()
 {

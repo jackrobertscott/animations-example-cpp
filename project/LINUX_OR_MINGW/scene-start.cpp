@@ -32,6 +32,7 @@ using namespace std;        // Import the C++ standard functions (e.g., min)
 GLuint shaderProgram; // The number identifying the GLSL shader program
 GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
 GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
+GLuint timeParam;
 
 static float viewDist = 5; // Distance from the camera to the centre of the scene
 static float camRotSidewaysDeg=0; // rotates the camera sideways around the centre
@@ -71,6 +72,8 @@ typedef struct {
     int meshId;
     int texId;
     float texScale;
+    float waves;
+
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -273,7 +276,9 @@ static void addObject(int id)
     sceneObjs[nObjects].loc[3] = 1.0;
 
     if (id!=0 && id!=55)
-        sceneObjs[nObjects].scale = 0.005;
+    {
+      sceneObjs[nObjects].scale = 0.005;
+    }
 
     sceneObjs[nObjects].rgb[0] = 0.7; sceneObjs[nObjects].rgb[1] = 0.7;
     sceneObjs[nObjects].rgb[2] = 0.7; sceneObjs[nObjects].brightness = 1.0;
@@ -287,6 +292,8 @@ static void addObject(int id)
     sceneObjs[nObjects].meshId = id;
     sceneObjs[nObjects].texId = rand() % numTextures;
     sceneObjs[nObjects].texScale = 2.0;
+
+    sceneObjs[nObjects].waves = 0.0;
 
     toolObj = currObject = nObjects++;
     setToolCallbacks(adjustLocXZ, camRotZ(),
@@ -323,6 +330,8 @@ void init( void )
     projectionU = glGetUniformLocation(shaderProgram, "Projection");
     modelViewU = glGetUniformLocation(shaderProgram, "ModelView");
 
+    timeParam = glGetUniformLocation(shaderProgram, "time");
+
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
     sceneObjs[0].loc = vec4(0.0, 0.0, 0.0, 1.0);
@@ -334,13 +343,13 @@ void init( void )
     sceneObjs[1].loc = vec4(2.0, 1.0, 1.0, 1.0);
     sceneObjs[1].scale = 0.1;
     sceneObjs[1].texId = 0; // Plain texture
-    sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[1].brightness = 0.8; // The light's brightness is 5 times this (below).
 
     addObject(55); // Sphere for the second light
     sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
     sceneObjs[2].scale = 0.2;
     sceneObjs[2].texId = 0; // Plain texture
-    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[2].brightness = 0.3; // The light's brightness is 5 times this (below).
 
     addObject(rand() % numMeshes); // A test mesh
 
@@ -375,7 +384,14 @@ void drawMesh(SceneObject sceneObj)
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2])* RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
+//    if(sceneObj.waves == 1)
+//    {
+//
+//    }
+//    else{
+      mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2])* RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
+//    }
+
 
 
     // Set the model-view matrix for the shaders
@@ -427,6 +443,8 @@ void display( void )
         glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
         glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
         glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
+        glUniform1f( glGetUniformLocation(shaderProgram, "Waves"), so.waves );
+        glUniform1f( timeParam, glutGet(GLUT_ELAPSED_TIME) );
         CheckError();
 
         glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
@@ -611,6 +629,34 @@ static void mainmenu(int id)
         setToolCallbacks(adjustAngleYX, mat2(400, 0, 0, -400),
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
+    if (id == 97 && currObject >= 0)
+    {
+      toolObj = currObject;
+      if(sceneObjs[toolObj].waves == 2.0)
+      {
+        sceneObjs[toolObj].waves = 0.0;
+      }
+      else
+      {
+        sceneObjs[toolObj].waves = 2.0;
+      }
+    }
+
+
+    if (id == 98)
+    {
+      if(sceneObjs[0].waves == 1.0)
+      {
+        sceneObjs[0].waves = 0.0;
+      }
+      else
+      {
+        sceneObjs[0].waves = 1.0;
+      }
+    }
+
+
+
     if (id == 99) exit(0);
 }
 
@@ -640,6 +686,8 @@ static void makeMenu()
     glutAddSubMenu("Texture",texMenuId);
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
+    glutAddMenuEntry("Ground Waves",98);
+    glutAddMenuEntry("Object Waves",97);
     glutAddMenuEntry("EXIT", 99);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
