@@ -33,7 +33,7 @@ void main()
     else if(Waves == 2.0)
     {
     mat3 WavesX = mat3( vec3(1.0, 0.0, 0.0),
-                        vec3(0.0, max(cos(time/1000 + vPosition.x/100.0) + 1, sin(time/1000 + vPosition.x/100.0)) + 1 , 0.0),
+                        vec3(0.0, cos(time/1000 + vPosition.x/100.0) + 2, 0.0),
                         vec3(0.0,  0.0, 1.0));
     fragVert = fragVert * WavesX;
     }
