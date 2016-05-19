@@ -77,6 +77,8 @@ typedef struct {
     int meshId;
     int texId;
     float texScale;
+    float distance, speed, direction, position;
+    float pose;
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -88,7 +90,6 @@ int toolObj = -1;    // The object currently being modified
 
 // custom variables
 
-float poseTime = 0.0;
 bool mouseEngaged = false;
 
 static bool avoidSkip() {
@@ -321,6 +322,20 @@ static void addObject(int id)
     sceneObjs[nObjects].texId = rand() % numTextures;
     sceneObjs[nObjects].texScale = 2.0;
 
+    if (id <= 55) {
+      sceneObjs[nObjects].distance = 0.0;
+      sceneObjs[nObjects].speed = 0.0;
+      sceneObjs[nObjects].pose = 0.0;
+      sceneObjs[nObjects].direction = 0.0;
+      sceneObjs[nObjects].position = 0.0;
+    } else {
+      sceneObjs[nObjects].distance = 15000.0;
+      sceneObjs[nObjects].speed = 10.0;
+      sceneObjs[nObjects].pose = 1.0;
+      sceneObjs[nObjects].direction = 1.0;
+      sceneObjs[nObjects].position = 0.0;
+    }
+
     toolObj = currObject = nObjects++;
     setToolCallbacks(adjustLocXZ, camRotZ(),
                      adjustScaleY, mat2(0.05, 0, 0, 10.0) );
@@ -380,13 +395,44 @@ void init( void )
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
 
-    addObject(rand() % numMeshes); // A test mesh
+    // addObject(rand() % numMeshes); // A test mesh
+    addObject(56); // Monkey head
+    // addObject(57); // Gingerbread Man
 
     // We need to enable the depth test to discard fragments that
     // are behind previously drawn fragments for the same pixel.
     glEnable( GL_DEPTH_TEST );
     doRotate(); // Start in camera rotate mode.
     glClearColor( 0.0, 0.0, 0.0, 1.0 ); /* black background */
+}
+
+//----------------------------------------------------------------------------
+
+// Part B - D: animate object
+void animateObject(SceneObject so) {
+    // calculate angles for object orientation
+    float roll	= (float)((int)floor(so.angles[0]) % 360) * M_PI / 180;
+    float pitch	= (float)((int)floor(so.angles[1]) % 360) * M_PI / 180;
+    float yaw	= (float)((int)floor(so.angles[2]) % 360) * M_PI / 180;
+
+    // update object location and position
+    vec4 change = so.direction * so.speed / 10000.0 * vec4(-cos(yaw) * sin(pitch), sin(roll) *  cos(pitch), -cos(pitch), 0.0);
+    so.loc += change;
+    so.position += so.direction * so.speed;
+
+    // change direction if object reaches limits
+    if (so.position >= so.distance) {
+      so.position = so.distance;
+      so.direction *= -1.0;
+    } else if (so.position <= 0.0) {
+      so.position = 0.0;
+      so.direction *= -1.0;
+    }
+
+    // update frame relative to position
+    std::cout << so.position << std::endl;
+    so.pose = (float)((int)(so.position / so.distance / 80.0) % (int)(40.0)) + 1.0;
+    std::cout << so.pose << std::endl;
 }
 
 //----------------------------------------------------------------------------
@@ -429,6 +475,8 @@ void drawMesh(SceneObject sceneObj)
                    GL_UNSIGNED_INT, NULL);
     CheckError();
 
+    if (sceneObj.distance > 0.0 && sceneObj.speed > 0.0) animateObject(sceneObj);
+
     int nBones = meshes[sceneObj.meshId]->mNumBones;
     if(nBones == 0)
         // If no bones, just a single identity matrix is used
@@ -440,14 +488,13 @@ void drawMesh(SceneObject sceneObj)
     // giving the time relative to the start of the animation,
     // measured in frames, like the frame numbers in Blender.)
 
-    poseTime += 1.0;
     // mat4 boneTransforms[nBones];     // was: mat4 boneTransforms[mesh->mNumBones];
     mat4 *boneTransforms;
     boneTransforms = (mat4 *)malloc(sizeof(mat4)*nBones);
     // initialize each boneTransforms[i] to a zero matrix
     for (int i=0; i < nBones; i++)
         boneTransforms[i] = mat4(0.0);
-    calculateAnimPose(meshes[sceneObj.meshId], scenes[sceneObj.meshId], 0, poseTime, boneTransforms);
+    calculateAnimPose(meshes[sceneObj.meshId], scenes[sceneObj.meshId], 0, sceneObj.pose, boneTransforms);
     glUniformMatrix4fv(uBoneTransforms, nBones, GL_TRUE, (const GLfloat *)boneTransforms);
 }
 
@@ -651,6 +698,22 @@ static void adjustAngleZTexscale(vec2 az_ts)
   }
 }
 
+// Part B - D: add callbacks to change distance
+static void adjustObjectDistance(vec2 ob_di)
+{
+  if (avoidSkip()) {
+    sceneObjs[currObject].distance += 10000.0 * ob_di[0];
+  }
+}
+
+// Part B - D: add callbacks to change speed
+static void adjustObjectSpeed(vec2 ob_sp)
+{
+  if (avoidSkip()) {
+    sceneObjs[currObject].speed += ob_sp[0];
+  }
+}
+
 static void mainmenu(int id)
 {
     deactivateTool();
@@ -664,6 +727,10 @@ static void mainmenu(int id)
     if (id == 55 && currObject>=0) {
         setToolCallbacks(adjustAngleYX, mat2(400, 0, 0, -400),
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
+    }
+    if (id == 95 && currObject>=0) {
+        setToolCallbacks(adjustObjectDistance, mat2(1.0, 0, 0, 1.0),
+                         adjustObjectSpeed, mat2(1.0, 0, 0, 1.0));
     }
     if (id == 99) exit(0);
 }
@@ -695,6 +762,7 @@ static void makeMenu()
     glutAddSubMenu("Texture",texMenuId);
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
+    glutAddMenuEntry("Distance/Speed", 95);
     glutAddMenuEntry("EXIT", 99);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
