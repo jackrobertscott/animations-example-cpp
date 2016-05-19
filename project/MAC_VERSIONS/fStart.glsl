@@ -6,8 +6,9 @@
  */
 
 varying vec2 texCoord;  // The third coordinate is always 0.0 and is discarded
-varying vec3 pos;
-varying vec3 N;
+varying vec3 position;
+varying vec3 normal;
+varying mat4 boneTransform;
 
 uniform sampler2D texture;
 uniform vec3 AmbientProduct, DiffuseProduct, SpecularProduct;
@@ -25,7 +26,7 @@ void main()
     /////////////
 
     // The vector to the light from the vertex
-    vec3 Lvec1 = LightPosition1.xyz - pos;
+    vec3 Lvec1 = LightPosition1.xyz - position;
 
     // Part 1 - G: lighting calculations
     float lightToObject = length(Lvec1);
@@ -33,16 +34,16 @@ void main()
 
     // Unit direction vectors for Blinn-Phong shading calculation
     vec3 L1 = normalize( Lvec1 );   // Direction to the light source
-    vec3 E1 = normalize( -pos );   // Direction to the eye/camera
+    vec3 E1 = normalize( -position );   // Direction to the eye/camera
     vec3 H1 = normalize( L1 + E1 );  // Halfway vector
 
-    float Kd1 = max( dot(L1, N), 0.0 );
+    float Kd1 = max( dot(L1, normal), 0.0 );
     vec3 diffuse1 = Kd1 * DiffuseProduct + distance;
 
-    float Ks1 = pow( max(dot(N, H1), 0.0), Shininess );
+    float Ks1 = pow( max(dot(normal, H1), 0.0), Shininess );
     vec3 specular1 = vec3(0.1, 0.1, 0.1) * Ks1 * SpecularProduct + distance;
 
-    if (dot(L1, N) < 0.0 ) {
+    if (dot(L1, normal) < 0.0 ) {
         specular1 = vec3(0.0, 0.0, 0.0);
     }
 
@@ -51,20 +52,20 @@ void main()
     /////////////
 
     // The vector to the light from the vertex
-    vec3 Lvec2 = LightPosition2.xyz - pos;
+    vec3 Lvec2 = LightPosition2.xyz - position;
 
     // Unit direction vectors for Blinn-Phong shading calculation
     vec3 L2 = normalize( Lvec2 );   // Direction to the light source
-    vec3 E2 = normalize( -pos );   // Direction to the eye/camera
+    vec3 E2 = normalize( -position );   // Direction to the eye/camera
     vec3 H2 = normalize( L2 + E2 );  // Halfway vector
 
-    float Kd2 = max( dot(L2, N), 0.0 );
+    float Kd2 = max( dot(L2, normal), 0.0 );
     vec3 diffuse2 = Kd2 * DiffuseProduct;
 
-    float Ks2 = pow( max(dot(N, H2), 0.0), Shininess );
+    float Ks2 = pow( max(dot(normal, H2), 0.0), Shininess );
     vec3 specular2 = vec3(0.1, 0.1, 0.1) * Ks2 * SpecularProduct;
 
-    if (dot(L2, N) < 0.0 ) {
+    if (dot(L2, normal) < 0.0 ) {
         specular2 = vec3(0.0, 0.0, 0.0);
     }
 

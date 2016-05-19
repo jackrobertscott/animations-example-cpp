@@ -8,25 +8,34 @@
 attribute vec3 vPosition;
 attribute vec3 vNormal;
 attribute vec2 vTexCoord;
+attribute vec4 vBoneIDs;
+attribute vec4 vBoneWeights;
 
 varying vec2 texCoord;
-varying vec3 pos;
-varying vec3 N;
+varying vec3 position;
+varying vec3 normal;
+varying mat4 boneTransform;
 
 uniform mat4 ModelView;
 uniform mat4 Projection;
+uniform mat4 uBoneTransforms[64];
 
 void main()
 {
-    vec4 vpos = vec4(vPosition, 1.0);
+    // Part B - D: calculate bone transformation
+    ivec4 bone = ivec4(vBoneIDs); // convert vBoneIDs to ivec4
+    boneTransform = vBoneWeights[0] * uBoneTransforms[bone[0]] +
+			 vBoneWeights[1] * uBoneTransforms[bone[1]] +
+			 vBoneWeights[2] * uBoneTransforms[bone[2]] +
+			 vBoneWeights[3] * uBoneTransforms[bone[3]];
 
-    // Transform vertex position into eye coordinates
-    pos = (ModelView * vpos).xyz;
+    vec4 vTransPos = vec4(vPosition, 1.0) * boneTransform;
+    vec4 vTransNorm = vec4(vNormal, 0.0) * boneTransform;
 
-    // Transform vertex normal into eye coordinates (assumes scaling
-    // is uniform across dimensions)
-    N = normalize( (ModelView*vec4(vNormal, 0.0)).xyz );
+    // Transform vertex position and vertex normal into eye coordinates (assumes scaling is uniform across dimensions)
+    position = (ModelView * vTransPos).xyz;
+    normal = normalize( (ModelView * vTransNorm).xyz );
 
-    gl_Position = Projection * ModelView * vpos;
+    gl_Position = Projection * ModelView * vTransPos;
     texCoord = vTexCoord;
 }
