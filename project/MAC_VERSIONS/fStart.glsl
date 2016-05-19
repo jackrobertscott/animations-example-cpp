@@ -6,8 +6,8 @@
  */
 
 varying vec2 texCoord;  // The third coordinate is always 0.0 and is discarded
-varying vec3 position;
-varying vec3 normal;
+varying vec4 fPosition;
+varying vec4 fNormal;
 varying mat4 boneTransform;
 
 uniform sampler2D texture;
@@ -25,6 +25,9 @@ void main()
     // Light 1 //
     /////////////
 
+    vec3 position = (ModelView * fPosition).xyz;
+    vec3 normal = normalize(ModelView * fNormal).xyz;
+
     // The vector to the light from the vertex
     vec3 Lvec1 = LightPosition1.xyz - position;
 
@@ -38,14 +41,16 @@ void main()
     vec3 H1 = normalize( L1 + E1 );  // Halfway vector
 
     float Kd1 = max( dot(L1, normal), 0.0 );
-    vec3 diffuse1 = Kd1 * DiffuseProduct + distance;
+    vec3 diffuse1 = Kd1 * DiffuseProduct;
 
     float Ks1 = pow( max(dot(normal, H1), 0.0), Shininess );
-    vec3 specular1 = vec3(0.1, 0.1, 0.1) * Ks1 * SpecularProduct + distance;
+    vec3 specular1 = vec3(0.1, 0.1, 0.1) * Ks1 * SpecularProduct;
 
     if (dot(L1, normal) < 0.0 ) {
         specular1 = vec3(0.0, 0.0, 0.0);
     }
+
+    vec3 Light1 = (diffuse1 + distance) + (specular1 + distance);
 
     /////////////
     // Light 2 //
@@ -69,6 +74,8 @@ void main()
         specular2 = vec3(0.0, 0.0, 0.0);
     }
 
+    vec3 Light2 = diffuse2 * specular2;
+
     //////////////////
     // Illumination //
     //////////////////
@@ -76,10 +83,7 @@ void main()
     // globalAmbient is independent of distance from the light source
     vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
 
-    // Compute ambience in the illumination equation
-    vec3 ambient = AmbientProduct;
-
-    vec3 colormod = globalAmbient + ambient + diffuse1 + diffuse2 + specular1 + specular2;
+    vec3 colormod = globalAmbient + AmbientProduct + Light1 + Light2;
 
     gl_FragColor = texture2D( texture, TexScale * texCoord * 2.0 ) * vec4(colormod, 1.0); // 1.0 is the opacity
 }
