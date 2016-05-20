@@ -4,11 +4,12 @@
  * Jack Scott	21504053
  * 2016 Sem 1
  */
-#version 120
+ #version 120
 
 varying vec2 texCoord;  // The third coordinate is always 0.0 and is discarded
-varying vec3 fragVert;
-varying vec3 fragNorm;
+varying vec4 fPosition;
+varying vec4 fNormal;
+varying mat4 boneTransform;
 
 uniform sampler2D texture;
 uniform vec3 AmbientProduct, DiffuseProduct, SpecularProduct;
@@ -26,11 +27,11 @@ void main()
 
     //normalMatrix
 
-    vec4 fpos = vec4(ModelView * vec4(fragVert, 1.0));
+    vec4 fpos = vec4(ModelView * fPosition);
     vec3 light2pos = vec4(ModelView * LightPosition2).xyz;
     vec3 light1pos = vec4(ModelView * LightPosition1).xyz;
 
-    vec3 N = normalize(mat3(ModelView) * fragNorm);
+    vec3 N = normalize(ModelView * fNormal).xyz;
 
     /////////////
     // Light 1 //
@@ -61,7 +62,6 @@ void main()
     }
 
     vec3 Light1 = ((diffuse1 + specular1) * distance);
-
 
     /////////////
     // Light 2 //
@@ -94,7 +94,7 @@ void main()
     // globalAmbient is independent of distance from the light source
     vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
 
-    vec3 colormod = globalAmbient + AmbientProduct + (Light1 * 1.0) + (Light2 * 1.0);
+    vec3 colormod = globalAmbient + AmbientProduct + Light1 + Light2;
 
     gl_FragColor = texture2D( texture, TexScale * texCoord * 2.0 ) * vec4(colormod, 1.0); // 1.0 is the opacity
 }

@@ -1,9 +1,9 @@
 /**
-  * CITS3003 Project
-  * Tahmer Hijjawi 21130321
-  * Jack Scott	21504053
-  * 2016 Sem 1
-  */
+ * CITS3003 Project
+ * Tahmer Hijjawi 21130321
+ * Jack Scott	21504053
+ * 2016 Sem 1
+ */
 
 #include "Angel.h"
 
@@ -25,6 +25,7 @@ GLint windowHeight=640, windowWidth=960;
 // Reader" code.  This file contains parts of the code that you shouldn't need
 // to modify (but, you can).
 #include "gnatidread.h"
+#include "gnatidread2.h"
 
 using namespace std;        // Import the C++ standard functions (e.g., min)
 
@@ -34,6 +35,9 @@ GLuint shaderProgram; // The number identifying the GLSL shader program
 GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
 GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
 GLuint timeParam;
+
+// Part B - D: Set global bone variables
+GLuint vBoneIDs, vBoneWeights, uBoneTransforms;
 
 static float viewDist = 1.5; // Distance from the camera to the centre of the scene
 static float camRotSidewaysDeg=0; // rotates the camera sideways around the centre
@@ -52,6 +56,9 @@ int numDisplayCalls = 0; // Used to calculate the number of frames per second
 //                           (numMeshes is defined in gnatidread.h)
 aiMesh* meshes[numMeshes]; // For each mesh we have a pointer to the mesh to draw
 GLuint vaoIDs[numMeshes]; // and a corresponding VAO ID from glGenVertexArrays
+
+// Part B - D: declaration of the meshes array
+const aiScene* scenes[numMeshes];
 
 // -----Textures--------------------------------------------------------------
 //                           (numTextures is defined in gnatidread.h)
@@ -73,6 +80,8 @@ typedef struct {
     int meshId;
     int texId;
     float texScale;
+    float distance, speed, direction, position;
+    float pose;
     float waves;
 } SceneObject;
 
@@ -83,14 +92,17 @@ int nObjects = 0;    // How many objects are currenly in the scene.
 int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
 
+// custom variables
+
 bool mouseEngaged = false;
 
-bool avoidSkip() {
-  if(!mouseEngaged) {
+static bool avoidSkip() {
+  if (!mouseEngaged) {
     mouseEngaged = true;
     return false;
   } else return true;
 }
+
 //----------------------------------------------------------------------------
 //
 // Loads a texture by number, and binds it for later use.
@@ -133,7 +145,10 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber)
     if (meshes[meshNumber] != NULL)
         return; // Already loaded
 
-    aiMesh* mesh = loadMesh(meshNumber);
+    // Part B - D: stores the scene for the mesh
+    const aiScene* scene = loadScene(meshNumber);
+    scenes[meshNumber] = scene;
+    aiMesh* mesh = scene->mMeshes[0];
     meshes[meshNumber] = mesh;
 
     glBindVertexArrayAPPLE( vaoIDs[meshNumber] );
@@ -177,31 +192,49 @@ void loadMeshIfNotAlreadyLoaded(int meshNumber)
                            BUFFER_OFFSET(sizeof(float)*6*mesh->mNumVertices) );
     glEnableVertexAttribArray( vNormal );
     CheckError();
+
+    // Part B - D: get boneIDs and boneWeights for each vertex from the imported mesh data
+    GLint boneIDs[mesh->mNumVertices][4];
+    GLfloat boneWeights[mesh->mNumVertices][4];
+    getBonesAffectingEachVertex(mesh, boneIDs, boneWeights);
+
+    GLuint buffers[2];
+    glGenBuffers( 2, buffers );  // Add two vertex buffer objects
+
+    glBindBuffer( GL_ARRAY_BUFFER, buffers[0] ); CheckError();
+    glBufferData( GL_ARRAY_BUFFER, sizeof(int)*4*mesh->mNumVertices, boneIDs, GL_STATIC_DRAW ); CheckError();
+    glVertexAttribPointer(vBoneIDs, 4, GL_INT, GL_FALSE, 0, BUFFER_OFFSET(0)); CheckError();
+    glEnableVertexAttribArray(vBoneIDs);     CheckError();
+
+    glBindBuffer( GL_ARRAY_BUFFER, buffers[1] );
+    glBufferData( GL_ARRAY_BUFFER, sizeof(float)*4*mesh->mNumVertices, boneWeights, GL_STATIC_DRAW );
+    glVertexAttribPointer(vBoneWeights, 4, GL_FLOAT, GL_FALSE, 0, BUFFER_OFFSET(0));
+    glEnableVertexAttribArray(vBoneWeights);    CheckError();
 }
 
 //----------------------------------------------------------------------------
 
 static void mouseClickOrScroll(int button, int state, int x, int y)
 {
-  if (button==GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-      if (glutGetModifiers()!=GLUT_ACTIVE_SHIFT) activateTool(button);
-      else activateTool(GLUT_LEFT_BUTTON);
-  }
-  else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) {
-    deactivateTool();
-    mouseEngaged = false;
-  }
-  else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) activateTool(button);
-  else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) {
-    deactivateTool();
-    mouseEngaged = false;
-  }
-  else if (button == 3) { // scroll up
-      viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
-  }
-  else if (button == 4) { // scroll down
-      viewDist = (viewDist < 0.0 ? viewDist : viewDist*1.25) + 0.05;
-  }
+    if (button==GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        if (glutGetModifiers()!=GLUT_ACTIVE_SHIFT) activateTool(button);
+        else activateTool(GLUT_LEFT_BUTTON);
+    }
+    else if (button==GLUT_LEFT_BUTTON && state == GLUT_UP) {
+      mouseEngaged = false;
+      deactivateTool();
+    }
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_DOWN) activateTool(button);
+    else if (button==GLUT_MIDDLE_BUTTON && state==GLUT_UP) {
+      mouseEngaged = false;
+      deactivateTool();
+    }
+    else if (button == 3) { // scroll up
+        viewDist = (viewDist < 0.0 ? viewDist : viewDist*0.8) - 0.05;
+    }
+    else if (button == 4) { // scroll down
+        viewDist = (viewDist < 0.0 ? viewDist : viewDist*1.25) + 0.05;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -221,37 +254,38 @@ mat2 camRotZ()
 
 //------callback functions for doRotate below and later-----------------------
 
-  static void adjustCamrotsideViewdist(vec2 cv)
-  {
-     if (avoidSkip()) {
-       camRotSidewaysDeg+=cv[0];
-       viewDist+=cv[1];
-     }
+static void adjustCamrotsideViewdist(vec2 cv)
+{
+  // cout << cv << endl;
+  if (avoidSkip()) {
+    camRotSidewaysDeg+=cv[0];
+    viewDist+=cv[1];
   }
+}
 
-  static void adjustcamSideUp(vec2 su)
-  {
-     if (avoidSkip()) {
-       camRotSidewaysDeg+=su[0];
-       camRotUpAndOverDeg+=su[1];
-     }
+static void adjustcamSideUp(vec2 su)
+{
+  if (avoidSkip()) {
+    camRotSidewaysDeg+=su[0];
+    camRotUpAndOverDeg+=su[1];
   }
+}
 
-  static void adjustLocXZ(vec2 xz)
-  {
-     if (avoidSkip()) {
-       sceneObjs[toolObj].loc[0]+=xz[0];
-       sceneObjs[toolObj].loc[2]+=xz[1];
-     }
+static void adjustLocXZ(vec2 xz)
+{
+  if (avoidSkip()) {
+    sceneObjs[toolObj].loc[0]+=xz[0];
+    sceneObjs[toolObj].loc[2]+=xz[1];
   }
+}
 
-  static void adjustScaleY(vec2 sy)
-  {
-     if (avoidSkip()) {
-       sceneObjs[toolObj].scale+=sy[0];
-       sceneObjs[toolObj].loc[1]+=sy[1];
-     }
+static void adjustScaleY(vec2 sy)
+{
+  if (avoidSkip()) {
+    sceneObjs[toolObj].scale+=sy[0];
+    sceneObjs[toolObj].loc[1]+=sy[1];
   }
+}
 
 //----------------------------------------------------------------------------
 //------Set the mouse buttons to rotate the camera----------------------------
@@ -291,6 +325,20 @@ static void addObject(int id)
     sceneObjs[nObjects].texId = rand() % numTextures;
     sceneObjs[nObjects].texScale = 2.0;
 
+    if (id <= 55) {
+      sceneObjs[nObjects].distance = 0.0;
+      sceneObjs[nObjects].speed = 0.0;
+      sceneObjs[nObjects].pose = 0.0;
+      sceneObjs[nObjects].direction = 0.0;
+      sceneObjs[nObjects].position = 0.0;
+    } else {
+      sceneObjs[nObjects].distance = 5000.0;
+      sceneObjs[nObjects].speed = 100.0;
+      sceneObjs[nObjects].pose = 1.0;
+      sceneObjs[nObjects].direction = 1.0;
+      sceneObjs[nObjects].position = 0.0;
+    }
+
     sceneObjs[nObjects].waves = 0.0;
 
     toolObj = currObject = nObjects++;
@@ -315,11 +363,13 @@ void init( void )
     // Load shaders and use the resulting shader program
     shaderProgram = InitShader( "vStart.glsl", "fStart.glsl" );
 
-    glUseProgram( shaderProgram ); CheckError();
+    glUseProgram( shaderProgram );
+    CheckError();
 
     // Initialize the vertex position attribute from the vertex shader
     vPosition = glGetAttribLocation( shaderProgram, "vPosition" );
-    vNormal = glGetAttribLocation( shaderProgram, "vNormal" ); CheckError();
+    vNormal = glGetAttribLocation( shaderProgram, "vNormal" );
+    CheckError();
 
     // Likewise, initialize the vertex texture coordinates attribute.
     vTexCoord = glGetAttribLocation( shaderProgram, "vTexCoord" );
@@ -327,8 +377,14 @@ void init( void )
 
     projectionU = glGetUniformLocation(shaderProgram, "Projection");
     modelViewU = glGetUniformLocation(shaderProgram, "ModelView");
+    CheckError();
 
+    // Part B - D: Initialize bone variables
+    vBoneIDs = glGetAttribLocation( shaderProgram, "vBoneIDs");
+    vBoneWeights = glGetAttribLocation( shaderProgram, "vBoneWeights");
+    uBoneTransforms = glGetUniformLocation( shaderProgram, "uBoneTransforms");
     timeParam = glGetUniformLocation(shaderProgram, "time");
+    CheckError();
 
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
@@ -349,7 +405,15 @@ void init( void )
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.3; // The light's brightness is 5 times this (below).
 
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
+
     addObject(rand() % numMeshes); // A test mesh
+    // addObject(56); // Monkey head
+    // addObject(57); // Gingerbread Man
 
     // We need to enable the depth test to discard fragments that
     // are behind previously drawn fragments for the same pixel.
@@ -360,12 +424,41 @@ void init( void )
 
 //----------------------------------------------------------------------------
 
-void drawMesh(SceneObject sceneObj)
+// Part B - D: animate object
+void animateObject(int index)
 {
+    // calculate angles for object orientation
+    float roll	= (float)((int)floor(sceneObjs[index].angles[0]) % 360) * M_PI / 180;
+    float pitch	= (float)((int)floor(sceneObjs[index].angles[1]) % 360) * M_PI / 180;
+    float yaw	= (float)((int)floor(sceneObjs[index].angles[2]) % 360) * M_PI / 180;
+
+    // update object location and position
+    vec4 change = sceneObjs[index].direction * sceneObjs[index].speed / 10000.0 * vec4(-cos(yaw) * sin(pitch), sin(roll) *  cos(pitch), -cos(pitch), 0.0);
+    sceneObjs[index].loc += change;
+    sceneObjs[index].position += sceneObjs[index].direction * sceneObjs[index].speed;
+
+    // change direction if object reaches limits
+    if (sceneObjs[index].position >= sceneObjs[index].distance) {
+      sceneObjs[index].position = sceneObjs[index].distance;
+      sceneObjs[index].direction *= -1.0;
+    } else if (sceneObjs[index].position <= 0.0) {
+      sceneObjs[index].position = 0.0;
+      sceneObjs[index].direction *= -1.0;
+    }
+
+    // update frame relative to position
+    sceneObjs[index].pose = (float)((int)(sceneObjs[index].position / sceneObjs[index].distance / 80.0) % (int)(40.0)) + 1.0;
+}
+
+//----------------------------------------------------------------------------
+
+void drawMesh(int index)
+{
+    SceneObject sceneObj = sceneObjs[index];
 
     // Activate a texture, loading if needed.
     loadTextureIfNotAlreadyLoaded(sceneObj.texId);
-    glActiveTexture(GL_TEXTURE0 );
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureIDs[sceneObj.texId]);
 
     // Texture 0 is the only texture type in this program, and is for the rgb
@@ -382,21 +475,10 @@ void drawMesh(SceneObject sceneObj)
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2])* RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
 
-//    if(waves == 1.0)
-//    {
-//      mat3 =
-//    }
-//    else if(waves == 2.0)
-//    {
-
-//    }
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
-
-
-
 
     // Activate the VAO for a mesh, loading if needed.
     loadMeshIfNotAlreadyLoaded(sceneObj.meshId);
@@ -407,6 +489,28 @@ void drawMesh(SceneObject sceneObj)
     glDrawElements(GL_TRIANGLES, meshes[sceneObj.meshId]->mNumFaces * 3,
                    GL_UNSIGNED_INT, NULL);
     CheckError();
+
+    if (sceneObj.distance > 0.0 && sceneObj.speed > 0.0) animateObject(index);
+
+    int nBones = meshes[sceneObj.meshId]->mNumBones;
+    if(nBones == 0)
+        // If no bones, just a single identity matrix is used
+        nBones = 1;
+
+    // get boneTransforms for the first (0th) animation at the given
+    // time (a float measured in frames)
+    // (Replace <POSE_TIME> appropriately with a float expression
+    // giving the time relative to the start of the animation,
+    // measured in frames, like the frame numbers in Blender.)
+
+    // mat4 boneTransforms[nBones];     // was: mat4 boneTransforms[mesh->mNumBones];
+    mat4 *boneTransforms;
+    boneTransforms = (mat4 *)malloc(sizeof(mat4)*nBones);
+    // initialize each boneTransforms[i] to a zero matrix
+    for (int i=0; i < nBones; i++)
+        boneTransforms[i] = mat4(0.0);
+    calculateAnimPose(meshes[sceneObj.meshId], scenes[sceneObj.meshId], 0, sceneObj.pose, boneTransforms);
+    glUniformMatrix4fv(uBoneTransforms, nBones, GL_TRUE, (const GLfloat *)boneTransforms);
 }
 
 //----------------------------------------------------------------------------
@@ -421,20 +525,15 @@ void display( void )
   // Set the view matrix. To start with this just moves the camera
   // backwards.  You'll need to add appropriate rotations.
 
-  view = Translate(0.0, 0.0, -viewDist)  * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
-
+  view = Translate(0.0, 0.0, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
   SceneObject lightObj1 = sceneObjs[1];
   SceneObject lightObj2 = sceneObjs[2];
-
-  vec4 lightPosition1 = view * lightObj1.loc ; //RotateX(camRotSidewaysDeg) *
+  vec4 lightPosition1 = view * lightObj1.loc ;
   vec4 lightPosition2 = lightObj2.loc ;
-
-
 
   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1);
   glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2);
-
   CheckError();
 
   for (int i=0; i < nObjects; i++) {
@@ -446,13 +545,12 @@ void display( void )
       glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
       glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
       glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
+      glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
       glUniform1f( glGetUniformLocation(shaderProgram, "Waves"), so.waves );
       glUniform1f( timeParam, glutGet(GLUT_ELAPSED_TIME) );
       CheckError();
 
-      glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
-
-      drawMesh(sceneObjs[i]);
+      drawMesh(i);
   }
 
   glutSwapBuffers();
@@ -487,8 +585,12 @@ static void groundMenu(int id)
 static void adjustBrightnessY(vec2 by)
 {
   if (avoidSkip()) {
-    sceneObjs[toolObj].loc[1]+=by[1];
     sceneObjs[toolObj].brightness+=by[0];
+    sceneObjs[toolObj].loc[1]+=by[1];
+
+    // add limits to brightness levels
+    if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
+    if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
   }
 }
 
@@ -500,7 +602,6 @@ static void adjustRedGreen(vec2 rg)
   }
 }
 
-
 static void adjustBlueBrightness(vec2 bl_br)
 {
   if (avoidSkip()) {
@@ -509,7 +610,7 @@ static void adjustBlueBrightness(vec2 bl_br)
   }
 }
 
-static void adjustAmbDif(vec2 am_df)
+static void adjustAmbientDiffuse(vec2 am_df)
 {
   if (avoidSkip()) {
     sceneObjs[toolObj].ambient+=(am_df[0] * 10);
@@ -517,7 +618,7 @@ static void adjustAmbDif(vec2 am_df)
   }
 }
 
-static void adjustSpecShine(vec2 sp_sh)
+static void adjustSpecularShine(vec2 sp_sh)
 {
   if (avoidSkip()) {
     sceneObjs[toolObj].specular+=(sp_sh[0] * 5);
@@ -535,7 +636,6 @@ static void lightMenu(int id)
         toolObj = 1;
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
-
     }
     else if (id >= 71 && id <= 74) {
         toolObj = 1;
@@ -543,14 +643,14 @@ static void lightMenu(int id)
                          adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
     else if (id == 80) {
-      toolObj = 2;
-      setToolCallbacks(adjustLocXZ, camRotZ(),
-                       adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
+        toolObj = 2;
+        setToolCallbacks(adjustLocXZ, camRotZ(),
+                         adjustBrightnessY, mat2( 1.0, 0.0, 0.0, 10.0) );
     }
     else if (id >= 81 && id <= 84) {
-      toolObj = 2;
-      setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
-                       adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
+        toolObj = 2;
+        setToolCallbacks(adjustRedGreen, mat2(1.0, 0, 0, 1.0),
+                         adjustBlueBrightness, mat2(1.0, 0, 0, 1.0) );
     }
     else {
         printf("Error in lightMenu\n");
@@ -588,11 +688,10 @@ static void materialMenu(int id)
         toolObj = currObject;
         setToolCallbacks(adjustRedGreen, mat2(1, 0, 0, 1),
                          adjustBlueBrightness, mat2(1, 0, 0, 1) );
-    }
-    if (id==20) {
-        toolObj = currObject;
-        setToolCallbacks(adjustAmbDif, mat2(1, 0, 0, 1),
-                         adjustSpecShine, mat2(10, 0, 0, 30) );
+    } else if (id==20) {
+      toolObj = currObject;
+      setToolCallbacks(adjustAmbientDiffuse, mat2(1, 0, 0, 1),
+                       adjustSpecularShine, mat2(10, 0, 0, 30) );
     }
     // You'll need to fill in the remaining menu items here.
     else {
@@ -606,7 +705,6 @@ static void adjustAngleYX(vec2 angle_yx)
     sceneObjs[currObject].angles[1]+=angle_yx[0];
     sceneObjs[currObject].angles[0]+=angle_yx[1];
   }
-
 }
 
 static void adjustAngleZTexscale(vec2 az_ts)
@@ -615,7 +713,22 @@ static void adjustAngleZTexscale(vec2 az_ts)
     sceneObjs[currObject].angles[2]+=az_ts[0];
     sceneObjs[currObject].texScale+=az_ts[1];
   }
+}
 
+// Part B - D: add callbacks to change distance
+static void adjustObjectDistance(vec2 ob_di)
+{
+  if (avoidSkip()) {
+    sceneObjs[currObject].distance += ob_di[0];
+  }
+}
+
+// Part B - D: add callbacks to change speed
+static void adjustObjectSpeed(vec2 ob_sp)
+{
+  if (avoidSkip()) {
+    sceneObjs[currObject].speed += ob_sp[0];
+  }
 }
 
 static void mainmenu(int id)
@@ -632,6 +745,10 @@ static void mainmenu(int id)
         setToolCallbacks(adjustAngleYX, mat2(400, 0, 0, -400),
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
+    if (id == 95 && currObject>=0) {
+        setToolCallbacks(adjustObjectDistance, mat2(1000.0, 0, 0, 1000.0),
+                         adjustObjectSpeed, mat2(10.0, 0, 0, 10.0));
+    }
     if (id == 97 && currObject >= 0)
     {
       toolObj = currObject;
@@ -644,8 +761,6 @@ static void mainmenu(int id)
         sceneObjs[toolObj].waves = 2.0;
       }
     }
-
-
     if (id == 98)
     {
       if(sceneObjs[0].waves == 1.0)
@@ -657,15 +772,13 @@ static void mainmenu(int id)
         sceneObjs[0].waves = 1.0;
       }
     }
-
-
-
     if (id == 99) exit(0);
 }
 
 static void makeMenu()
 {
-    int objectId = createArrayMenu(numMeshes, objectMenuEntries, objectMenu);
+    // Correct number of meshes: (numMeshes - 1)
+    int objectId = createArrayMenu((numMeshes - 1), objectMenuEntries, objectMenu);
 
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All",10);
@@ -689,6 +802,7 @@ static void makeMenu()
     glutAddSubMenu("Texture",texMenuId);
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
+    glutAddMenuEntry("Distance/Speed", 95);
     glutAddMenuEntry("Ground Waves",98);
     glutAddMenuEntry("Object Waves",97);
     glutAddMenuEntry("EXIT", 99);
