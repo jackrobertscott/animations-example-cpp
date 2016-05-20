@@ -363,11 +363,13 @@ void init( void )
     // Load shaders and use the resulting shader program
     shaderProgram = InitShader( "vStart.glsl", "fStart.glsl" );
 
-    glUseProgram( shaderProgram ); CheckError();
+    glUseProgram( shaderProgram );
+    CheckError();
 
     // Initialize the vertex position attribute from the vertex shader
     vPosition = glGetAttribLocation( shaderProgram, "vPosition" );
-    vNormal = glGetAttribLocation( shaderProgram, "vNormal" ); CheckError();
+    vNormal = glGetAttribLocation( shaderProgram, "vNormal" );
+    CheckError();
 
     // Likewise, initialize the vertex texture coordinates attribute.
     vTexCoord = glGetAttribLocation( shaderProgram, "vTexCoord" );
@@ -375,12 +377,14 @@ void init( void )
 
     projectionU = glGetUniformLocation(shaderProgram, "Projection");
     modelViewU = glGetUniformLocation(shaderProgram, "ModelView");
+    CheckError();
 
     // Part B - D: Initialize bone variables
     vBoneIDs = glGetAttribLocation( shaderProgram, "vBoneIDs");
     vBoneWeights = glGetAttribLocation( shaderProgram, "vBoneWeights");
     uBoneTransforms = glGetUniformLocation( shaderProgram, "uBoneTransforms");
     timeParam = glGetUniformLocation(shaderProgram, "time");
+    CheckError();
 
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
@@ -454,7 +458,7 @@ void drawMesh(SceneObject sceneObj)
 
     // Activate a texture, loading if needed.
     loadTextureIfNotAlreadyLoaded(sceneObj.texId);
-    glActiveTexture(GL_TEXTURE0 );
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureIDs[sceneObj.texId]);
 
     // Texture 0 is the only texture type in this program, and is for the rgb
@@ -473,19 +477,8 @@ void drawMesh(SceneObject sceneObj)
 
     mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
 
-//    if(waves == 1.0)
-//    {
-//      mat3 =
-//    }
-//    else if(waves == 2.0)
-//    {
-
-//    }
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
-
-
-
 
     // Activate the VAO for a mesh, loading if needed.
     loadMeshIfNotAlreadyLoaded(sceneObj.meshId);

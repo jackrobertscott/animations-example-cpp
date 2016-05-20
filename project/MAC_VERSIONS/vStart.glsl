@@ -27,10 +27,10 @@ void main()
 {
     // Part B - D: calculate bone transformation
     ivec4 bone = ivec4(vBoneIDs); // convert vBoneIDs to ivec4
-    boneTransform = vBoneWeights[0] * uBoneTransforms[bone[0]] +
-			 vBoneWeights[1] * uBoneTransforms[bone[1]] +
-			 vBoneWeights[2] * uBoneTransforms[bone[2]] +
-			 vBoneWeights[3] * uBoneTransforms[bone[3]];
+    boneTransform = (vBoneWeights[0] * uBoneTransforms[bone[0]]) +
+			 (vBoneWeights[1] * uBoneTransforms[bone[1]]) +
+			 (vBoneWeights[2] * uBoneTransforms[bone[2]]) +
+			 (vBoneWeights[3] * uBoneTransforms[bone[3]]);
 
     vec4 vTransPos = vec4(vPosition, 1.0) * boneTransform;
     vec4 vTransNorm = vec4(vNormal, 0.0) * boneTransform;
@@ -44,7 +44,7 @@ void main()
       mat3 WavesX = mat3( vec3(1.0, 0.0, 0.0),
                           vec3(0.0, cos(time/1000.0 + vTransPos.x/100.0) + 2.0, 0.0),
                           vec3(0.0,  0.0, 1.0));
-      vTransPos = vTransPos * WavesX;
+      vTransPos.xyz = vTransPos.xyz * WavesX;
     }
 
     // Transform vertex position and vertex normal into eye coordinates (assumes scaling is uniform across dimensions)

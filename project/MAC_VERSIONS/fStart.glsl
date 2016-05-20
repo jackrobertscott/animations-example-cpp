@@ -27,11 +27,11 @@ void main()
 
     //normalMatrix
 
-    vec4 fpos = vec4(ModelView * vec4(fPosition, 1.0));
+    vec4 fpos = vec4(ModelView * fPosition);
     vec3 light2pos = vec4(ModelView * LightPosition2).xyz;
     vec3 light1pos = vec4(ModelView * LightPosition1).xyz;
 
-    vec3 N = normalize(mat3(ModelView) * fNormal);
+    vec3 N = normalize(ModelView * fNormal).xyz;
 
     /////////////
     // Light 1 //
