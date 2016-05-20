@@ -395,8 +395,8 @@ void init( void )
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
 
-    // addObject(rand() % numMeshes); // A test mesh
-    addObject(56); // Monkey head
+    addObject(rand() % numMeshes); // A test mesh
+    // addObject(56); // Monkey head
     // addObject(57); // Gingerbread Man
 
     // We need to enable the depth test to discard fragments that
