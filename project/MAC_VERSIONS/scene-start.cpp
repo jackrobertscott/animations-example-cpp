@@ -332,8 +332,8 @@ static void addObject(int id)
       sceneObjs[nObjects].direction = 0.0;
       sceneObjs[nObjects].position = 0.0;
     } else {
-      sceneObjs[nObjects].distance = 15000.0;
-      sceneObjs[nObjects].speed = 10.0;
+      sceneObjs[nObjects].distance = 5000.0;
+      sceneObjs[nObjects].speed = 100.0;
       sceneObjs[nObjects].pose = 1.0;
       sceneObjs[nObjects].direction = 1.0;
       sceneObjs[nObjects].position = 0.0;
@@ -425,36 +425,36 @@ void init( void )
 //----------------------------------------------------------------------------
 
 // Part B - D: animate object
-void animateObject(SceneObject so) {
+void animateObject(int index)
+{
     // calculate angles for object orientation
-    float roll	= (float)((int)floor(so.angles[0]) % 360) * M_PI / 180;
-    float pitch	= (float)((int)floor(so.angles[1]) % 360) * M_PI / 180;
-    float yaw	= (float)((int)floor(so.angles[2]) % 360) * M_PI / 180;
+    float roll	= (float)((int)floor(sceneObjs[index].angles[0]) % 360) * M_PI / 180;
+    float pitch	= (float)((int)floor(sceneObjs[index].angles[1]) % 360) * M_PI / 180;
+    float yaw	= (float)((int)floor(sceneObjs[index].angles[2]) % 360) * M_PI / 180;
 
     // update object location and position
-    vec4 change = so.direction * so.speed / 10000.0 * vec4(-cos(yaw) * sin(pitch), sin(roll) *  cos(pitch), -cos(pitch), 0.0);
-    so.loc += change;
-    so.position += so.direction * so.speed;
+    vec4 change = sceneObjs[index].direction * sceneObjs[index].speed / 10000.0 * vec4(-cos(yaw) * sin(pitch), sin(roll) *  cos(pitch), -cos(pitch), 0.0);
+    sceneObjs[index].loc += change;
+    sceneObjs[index].position += sceneObjs[index].direction * sceneObjs[index].speed;
 
     // change direction if object reaches limits
-    if (so.position >= so.distance) {
-      so.position = so.distance;
-      so.direction *= -1.0;
-    } else if (so.position <= 0.0) {
-      so.position = 0.0;
-      so.direction *= -1.0;
+    if (sceneObjs[index].position >= sceneObjs[index].distance) {
+      sceneObjs[index].position = sceneObjs[index].distance;
+      sceneObjs[index].direction *= -1.0;
+    } else if (sceneObjs[index].position <= 0.0) {
+      sceneObjs[index].position = 0.0;
+      sceneObjs[index].direction *= -1.0;
     }
 
     // update frame relative to position
-    std::cout << so.position << std::endl;
-    so.pose = (float)((int)(so.position / so.distance / 80.0) % (int)(40.0)) + 1.0;
-    std::cout << so.pose << std::endl;
+    sceneObjs[index].pose = (float)((int)(sceneObjs[index].position / sceneObjs[index].distance / 80.0) % (int)(40.0)) + 1.0;
 }
 
 //----------------------------------------------------------------------------
 
-void drawMesh(SceneObject sceneObj)
+void drawMesh(int index)
 {
+    SceneObject sceneObj = sceneObjs[index];
 
     // Activate a texture, loading if needed.
     loadTextureIfNotAlreadyLoaded(sceneObj.texId);
@@ -490,7 +490,7 @@ void drawMesh(SceneObject sceneObj)
                    GL_UNSIGNED_INT, NULL);
     CheckError();
 
-    if (sceneObj.distance > 0.0 && sceneObj.speed > 0.0) animateObject(sceneObj);
+    if (sceneObj.distance > 0.0 && sceneObj.speed > 0.0) animateObject(index);
 
     int nBones = meshes[sceneObj.meshId]->mNumBones;
     if(nBones == 0)
@@ -550,7 +550,7 @@ void display( void )
       glUniform1f( timeParam, glutGet(GLUT_ELAPSED_TIME) );
       CheckError();
 
-      drawMesh(sceneObjs[i]);
+      drawMesh(i);
   }
 
   glutSwapBuffers();
@@ -719,7 +719,7 @@ static void adjustAngleZTexscale(vec2 az_ts)
 static void adjustObjectDistance(vec2 ob_di)
 {
   if (avoidSkip()) {
-    sceneObjs[currObject].distance += 10000.0 * ob_di[0];
+    sceneObjs[currObject].distance += ob_di[0];
   }
 }
 
@@ -746,8 +746,8 @@ static void mainmenu(int id)
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
     if (id == 95 && currObject>=0) {
-        setToolCallbacks(adjustObjectDistance, mat2(1.0, 0, 0, 1.0),
-                         adjustObjectSpeed, mat2(1.0, 0, 0, 1.0));
+        setToolCallbacks(adjustObjectDistance, mat2(1000.0, 0, 0, 1000.0),
+                         adjustObjectSpeed, mat2(10.0, 0, 0, 10.0));
     }
     if (id == 97 && currObject >= 0)
     {

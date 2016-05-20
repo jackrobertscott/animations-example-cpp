@@ -27,13 +27,13 @@ void main()
 {
     // Part B - D: calculate bone transformation
     ivec4 bone = ivec4(vBoneIDs); // convert vBoneIDs to ivec4
-    boneTransform = (vBoneWeights[0] * uBoneTransforms[bone[0]]) +
-			 (vBoneWeights[1] * uBoneTransforms[bone[1]]) +
-			 (vBoneWeights[2] * uBoneTransforms[bone[2]]) +
-			 (vBoneWeights[3] * uBoneTransforms[bone[3]]);
+    boneTransform = vBoneWeights[0] * uBoneTransforms[bone[0]] +
+      vBoneWeights[1] * uBoneTransforms[bone[1]] +
+      vBoneWeights[2] * uBoneTransforms[bone[2]] +
+      vBoneWeights[3] * uBoneTransforms[bone[3]];
 
-    vec4 vTransPos = vec4(vPosition, 1.0) * boneTransform;
-    vec4 vTransNorm = vec4(vNormal, 0.0) * boneTransform;
+    vec4 vTransPos = boneTransform * vec4(vPosition, 1.0);
+    vec4 vTransNorm = boneTransform * vec4(vNormal, 0.0);
 
     if(Waves == 1.0)
     {
@@ -51,6 +51,6 @@ void main()
     fPosition = vTransPos;
     fNormal = vTransNorm;
 
-    gl_Position = Projection * ModelView * vTransPos;
+    gl_Position = Projection * ModelView * boneTransform * vTransPos;
     texCoord = vTexCoord;
 }
