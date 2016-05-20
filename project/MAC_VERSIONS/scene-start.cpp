@@ -7,6 +7,8 @@
 
 #include "Angel.h"
 
+#include <OpenGL/gl3.h>
+
 #include <stdlib.h>
 #include <dirent.h>
 #include <time.h>
@@ -32,6 +34,7 @@ using namespace std;        // Import the C++ standard functions (e.g., min)
 GLuint shaderProgram; // The number identifying the GLSL shader program
 GLuint vPosition, vNormal, vTexCoord; // IDs for vshader input vars (from glGetAttribLocation)
 GLuint projectionU, modelViewU; // IDs for uniform variables (from glGetUniformLocation)
+GLuint timeParam;
 
 // Part B - D: Set global bone variables
 GLuint vBoneIDs, vBoneWeights, uBoneTransforms;
@@ -79,6 +82,7 @@ typedef struct {
     float texScale;
     float distance, speed, direction, position;
     float pose;
+    float waves;
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -283,7 +287,6 @@ static void adjustScaleY(vec2 sy)
   }
 }
 
-
 //----------------------------------------------------------------------------
 //------Set the mouse buttons to rotate the camera----------------------------
 //------around the centre of the scene.---------------------------------------
@@ -336,6 +339,8 @@ static void addObject(int id)
       sceneObjs[nObjects].position = 0.0;
     }
 
+    sceneObjs[nObjects].waves = 0.0;
+
     toolObj = currObject = nObjects++;
     setToolCallbacks(adjustLocXZ, camRotZ(),
                      adjustScaleY, mat2(0.05, 0, 0, 10.0) );
@@ -375,6 +380,7 @@ void init( void )
     vBoneIDs = glGetAttribLocation( shaderProgram, "vBoneIDs");
     vBoneWeights = glGetAttribLocation( shaderProgram, "vBoneWeights");
     uBoneTransforms = glGetUniformLocation( shaderProgram, "uBoneTransforms");
+    timeParam = glGetUniformLocation(shaderProgram, "time");
 
     // Objects 0, and 1 are the ground and the first light.
     addObject(0); // Square for the ground
@@ -387,7 +393,13 @@ void init( void )
     sceneObjs[1].loc = vec4(2.0, 1.0, 1.0, 1.0);
     sceneObjs[1].scale = 0.1;
     sceneObjs[1].texId = 0; // Plain texture
-    sceneObjs[1].brightness = 0.2; // The light's brightness is 5 times this (below).
+    sceneObjs[1].brightness = 0.8; // The light's brightness is 5 times this (below).
+
+    addObject(55); // Sphere for the second light
+    sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
+    sceneObjs[2].scale = 0.2;
+    sceneObjs[2].texId = 0; // Plain texture
+    sceneObjs[2].brightness = 0.3; // The light's brightness is 5 times this (below).
 
     addObject(55); // Sphere for the second light
     sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
@@ -461,9 +473,19 @@ void drawMesh(SceneObject sceneObj)
 
     mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
 
+//    if(waves == 1.0)
+//    {
+//      mat3 =
+//    }
+//    else if(waves == 2.0)
+//    {
 
+//    }
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
+
+
+
 
     // Activate the VAO for a mesh, loading if needed.
     loadMeshIfNotAlreadyLoaded(sceneObj.meshId);
@@ -502,44 +524,43 @@ void drawMesh(SceneObject sceneObj)
 
 void display( void )
 {
-    numDisplayCalls++;
+  numDisplayCalls++;
 
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-    CheckError(); // May report a harmless GL_INVALID_OPERATION with GLEW on the first frame
+  glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+  CheckError(); // May report a harmless GL_INVALID_OPERATION with GLEW on the first frame
 
-    // Set the view matrix.  To start with this just moves the camera
-    // backwards.  You'll need to add appropriate rotations.
+  // Set the view matrix. To start with this just moves the camera
+  // backwards.  You'll need to add appropriate rotations.
 
-    view = Translate(0.0, 0.0, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
+  view = Translate(0.0, 0.0, -viewDist) * RotateX(camRotUpAndOverDeg) * RotateY(camRotSidewaysDeg);
 
-    SceneObject lightObj1 = sceneObjs[1];
-    SceneObject lightObj2 = sceneObjs[2];
-    vec4 lightPosition1 = view * lightObj1.loc ;
-    vec4 lightPosition2 = view * lightObj2.loc ;
+  SceneObject lightObj1 = sceneObjs[1];
+  SceneObject lightObj2 = sceneObjs[2];
+  vec4 lightPosition1 = view * lightObj1.loc ;
+  vec4 lightPosition2 = lightObj2.loc ;
 
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1);
-    glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2);
-    CheckError();
+  glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition1"), 1, lightPosition1);
+  glUniform4fv( glGetUniformLocation(shaderProgram, "LightPosition2"), 1, lightPosition2);
+  CheckError();
 
-    for (int i=0; i < nObjects; i++) {
-        SceneObject so = sceneObjs[i];
+  for (int i=0; i < nObjects; i++) {
+      SceneObject so = sceneObjs[i];
 
-        vec3 rgb = so.rgb * lightObj1.rgb * lightObj2.rgb * so.brightness * lightObj1.brightness * lightObj2.brightness * 2.0;
-        glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb );
-        CheckError();
-        glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
-        // Part 1 - H: change colour rgb to just white
-        glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
-        glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
-        CheckError();
+      vec3 rgb = so.rgb * lightObj1.rgb * lightObj2.rgb * so.brightness * lightObj1.brightness * lightObj2.brightness * 2.0;
+      glUniform3fv( glGetUniformLocation(shaderProgram, "AmbientProduct"), 1, so.ambient * rgb );
+      CheckError();
+      glUniform3fv( glGetUniformLocation(shaderProgram, "DiffuseProduct"), 1, so.diffuse * rgb );
+      glUniform3fv( glGetUniformLocation(shaderProgram, "SpecularProduct"), 1, so.specular * vec3(1.0, 1.0, 1.0) );
+      glUniform1f( glGetUniformLocation(shaderProgram, "Shininess"), so.shine );
+      glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
+      glUniform1f( glGetUniformLocation(shaderProgram, "Waves"), so.waves );
+      glUniform1f( timeParam, glutGet(GLUT_ELAPSED_TIME) );
+      CheckError();
 
-        // Part 2 - A: texture scale changes
-        glUniform1f( glGetUniformLocation(shaderProgram, "TexScale"), so.texScale );
+      drawMesh(sceneObjs[i]);
+  }
 
-        drawMesh(sceneObjs[i]);
-    }
-
-    glutSwapBuffers();
+  glutSwapBuffers();
 }
 
 //----------------------------------------------------------------------------
@@ -572,10 +593,11 @@ static void adjustBrightnessY(vec2 by)
 {
   if (avoidSkip()) {
     sceneObjs[toolObj].brightness+=by[0];
+    sceneObjs[toolObj].loc[1]+=by[1];
+
     // add limits to brightness levels
     if (sceneObjs[toolObj].brightness > 1.0) sceneObjs[toolObj].brightness = 1.0;
     if (sceneObjs[toolObj].brightness < 0.0) sceneObjs[toolObj].brightness = 0.0;
-    sceneObjs[toolObj].loc[1]+=by[1];
   }
 }
 
@@ -598,18 +620,20 @@ static void adjustBlueBrightness(vec2 bl_br)
 static void adjustAmbientDiffuse(vec2 am_df)
 {
   if (avoidSkip()) {
-    sceneObjs[toolObj].diffuse+=am_df[0];
-    sceneObjs[toolObj].ambient+=am_df[1];
+    sceneObjs[toolObj].ambient+=(am_df[0] * 10);
+    sceneObjs[toolObj].diffuse+=(am_df[1] * 10);
   }
 }
 
 static void adjustSpecularShine(vec2 sp_sh)
 {
   if (avoidSkip()) {
-    sceneObjs[toolObj].specular+=sp_sh[0];
-    sceneObjs[toolObj].shine+=sp_sh[1];
-    // cout << sceneObjs[toolObj].shine << endl;
+    sceneObjs[toolObj].specular+=(sp_sh[0] * 5);
+    sceneObjs[toolObj].shine+=(sp_sh[1] * 5);
   }
+  if (sceneObjs[toolObj].specular < 0.0) sceneObjs[toolObj].specular = 0.0;
+  if (sceneObjs[toolObj].shine > 128) sceneObjs[toolObj].shine = 128;
+  if (sceneObjs[toolObj].shine < 0.0) sceneObjs[toolObj].shine = 0.0;
 }
 
 static void lightMenu(int id)
@@ -674,7 +698,7 @@ static void materialMenu(int id)
     } else if (id==20) {
       toolObj = currObject;
       setToolCallbacks(adjustAmbientDiffuse, mat2(1, 0, 0, 1),
-                       adjustSpecularShine, mat2(1, 0, 0, 1) );
+                       adjustSpecularShine, mat2(10, 0, 0, 30) );
     }
     // You'll need to fill in the remaining menu items here.
     else {
@@ -732,6 +756,29 @@ static void mainmenu(int id)
         setToolCallbacks(adjustObjectDistance, mat2(1.0, 0, 0, 1.0),
                          adjustObjectSpeed, mat2(1.0, 0, 0, 1.0));
     }
+    if (id == 97 && currObject >= 0)
+    {
+      toolObj = currObject;
+      if(sceneObjs[toolObj].waves == 2.0)
+      {
+        sceneObjs[toolObj].waves = 0.0;
+      }
+      else
+      {
+        sceneObjs[toolObj].waves = 2.0;
+      }
+    }
+    if (id == 98)
+    {
+      if(sceneObjs[0].waves == 1.0)
+      {
+        sceneObjs[0].waves = 0.0;
+      }
+      else
+      {
+        sceneObjs[0].waves = 1.0;
+      }
+    }
     if (id == 99) exit(0);
 }
 
@@ -763,10 +810,11 @@ static void makeMenu()
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
     glutAddMenuEntry("Distance/Speed", 95);
+    glutAddMenuEntry("Ground Waves",98);
+    glutAddMenuEntry("Object Waves",97);
     glutAddMenuEntry("EXIT", 99);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
-
 //----------------------------------------------------------------------------
 
 void keyboard( unsigned char key, int x, int y )
@@ -789,33 +837,36 @@ void idle( void )
 
 void reshape( int width, int height )
 {
-    windowWidth = width;
-    windowHeight = height;
+  windowWidth = width;
+  windowHeight = height;
 
-    glViewport(0, 0, width, height);
+  glViewport(0, 0, width, height);
 
-    // You'll need to modify this so that the view is similar to that in the
-    // sample solution.
-    // In particular:
-    //     - the view should include "closer" visible objects (slightly tricky)
-    //     - when the width is less than the height, the view should adjust so
-    //         that the same part of the scene is visible across the width of
-    //         the window.
+  // You'll need to modify this so that the view is similar to that in the
+  // sample solution.
+  // In particular:
+  //     - the view should include "closer" visible objects (slightly tricky)
+  //     - when the width is less than the height, the view should adjust so
+  //         that the same part of the scene is visible across the width of
+  //         the window.
 
-    GLfloat nearDist = 0.001;
-    if (width > height) {
-      projection = Frustum(-nearDist*(float)width/(float)height,
-                           nearDist*(float)width/(float)height,
-                           -nearDist,
-                           nearDist,
-                           nearDist, 100.0);
-    } else {
-      projection = Frustum(-nearDist,
-                           nearDist,
-                           -nearDist*(float)height/(float)width,
-                           nearDist*(float)height/(float)width,
-                           nearDist, 100.0);
-    }
+  GLfloat nearDist = 0.001;
+  if(width >= height)
+  {
+    projection = Frustum(-nearDist*(float)width/(float)height,
+                         nearDist*(float)width/(float)height,
+                         -nearDist,
+                          nearDist,
+                         nearDist, 100.0);
+  }
+  if(height > width)
+  {
+    projection = Frustum(-nearDist,
+                         nearDist,
+                         -nearDist*(float)height/(float)width,
+                          nearDist*(float)height/(float)width,
+                         nearDist, 100.0);
+  }
 }
 
 //----------------------------------------------------------------------------
@@ -851,6 +902,8 @@ void fileErr(char* fileName)
 
 int main( int argc, char* argv[] )
 {
+
+
     // Get the program name, excluding the directory, for the window title
     programName = argv[0];
     for (char *cpointer = argv[0]; *cpointer != 0; cpointer++)
@@ -866,12 +919,12 @@ int main( int argc, char* argv[] )
     else fileErr(dirDefault1);
 
     glutInit( &argc, argv );
-    glutInitDisplayMode( GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH );
+    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize( windowWidth, windowHeight );
 
-    // glutInitContextVersion( 3, 2);
-    // glutInitContextProfile( GLUT_CORE_PROFILE );            // May cause issues, sigh, but you
-    // glutInitContextProfile( GLUT_COMPATIBILITY_PROFILE ); // should still use only OpenGL 3.2 Core
+    //glutInitContextVersion( 3, 2);
+    //glutInitContextProfile( GLUT_CORE_PROFILE );            // May cause issues, sigh, but you
+    //glutInitContextProfile( GLUT_COMPATIBILITY_PROFILE ); // should still use only OpenGL 3.2 Core
                                                             // features.
     glutCreateWindow( "Initialising..." );
 
@@ -895,6 +948,11 @@ int main( int argc, char* argv[] )
 
     makeMenu();
     CheckError();
+
+    printf("%s\n%s\n",
+        glGetString(GL_RENDERER),  // e.g. Intel HD Graphics 3000 OpenGL Engine
+        glGetString(GL_VERSION)    // e.g. 3.2 INTEL-8.0.61
+        );
 
     glutMainLoop();
     return 0;

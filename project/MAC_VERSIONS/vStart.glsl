@@ -4,6 +4,7 @@
  * Jack Scott	21504053
  * 2016 Sem 1
  */
+#version 120
 
 attribute vec3 vPosition;
 attribute vec3 vNormal;
@@ -19,6 +20,8 @@ varying mat4 boneTransform;
 uniform mat4 ModelView;
 uniform mat4 Projection;
 uniform mat4 uBoneTransforms[64];
+uniform float Waves;
+uniform float time;
 
 void main()
 {
@@ -31,6 +34,18 @@ void main()
 
     vec4 vTransPos = vec4(vPosition, 1.0) * boneTransform;
     vec4 vTransNorm = vec4(vNormal, 0.0) * boneTransform;
+
+    if(Waves == 1.0)
+    {
+      vTransPos.z =  sin(vTransPos.z + time/1000.0) * (sin(2.5 * vTransPos.y + time/1000.0 ) * cos(1.5 * vTransPos.x + time/1000.0) * 0.2);
+    }
+    else if(Waves == 2.0)
+    {
+      mat3 WavesX = mat3( vec3(1.0, 0.0, 0.0),
+                          vec3(0.0, cos(time/1000.0 + vTransPos.x/100.0) + 2.0, 0.0),
+                          vec3(0.0,  0.0, 1.0));
+      vTransPos = vTransPos * WavesX;
+    }
 
     // Transform vertex position and vertex normal into eye coordinates (assumes scaling is uniform across dimensions)
     fPosition = vTransPos;
