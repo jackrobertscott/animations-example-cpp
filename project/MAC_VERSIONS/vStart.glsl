@@ -51,6 +51,6 @@ void main()
     fPosition = vTransPos;
     fNormal = vTransNorm;
 
-    gl_Position = Projection * ModelView * boneTransform * vTransPos;
+    gl_Position = Projection * ModelView * vTransPos;
     texCoord = vTexCoord;
 }

@@ -325,19 +325,25 @@ static void addObject(int id)
     sceneObjs[nObjects].texId = rand() % numTextures;
     sceneObjs[nObjects].texScale = 2.0;
 
-    if (id <= 55) {
-      sceneObjs[nObjects].distance = 0.0;
-      sceneObjs[nObjects].speed = 0.0;
-      sceneObjs[nObjects].pose = 0.0;
-      sceneObjs[nObjects].direction = 0.0;
-      sceneObjs[nObjects].position = 0.0;
-    } else {
+    sceneObjs[nObjects].distance = 0.0;
+    sceneObjs[nObjects].speed = 0.0;
+    sceneObjs[nObjects].pose = 0.0;
+    sceneObjs[nObjects].direction = 0.0;
+    sceneObjs[nObjects].position = 0.0;
+
+    if(id > 55)
+    {
       sceneObjs[nObjects].distance = 5000.0;
       sceneObjs[nObjects].speed = 100.0;
       sceneObjs[nObjects].pose = 1.0;
       sceneObjs[nObjects].direction = 1.0;
       sceneObjs[nObjects].position = 0.0;
     }
+    if(id == 57)
+    {
+      sceneObjs[nObjects].angles[1] = 0.0;
+    }
+
 
     sceneObjs[nObjects].waves = 0.0;
 
@@ -446,8 +452,13 @@ void animateObject(int index)
       sceneObjs[index].direction *= -1.0;
     }
 
-    // update frame relative to position
-    sceneObjs[index].pose = (float)((int)(sceneObjs[index].position / sceneObjs[index].distance / 80.0) % (int)(40.0)) + 1.0;
+    sceneObjs[index].pose = sceneObjs[index].pose + 1.0;
+    // update frame
+    if(sceneObjs[index].pose == 40.0)
+    {
+      sceneObjs[index].pose = 0.0;
+    }
+
 }
 
 //----------------------------------------------------------------------------
@@ -486,11 +497,18 @@ void drawMesh(int index)
     glBindVertexArrayAPPLE( vaoIDs[sceneObj.meshId] );
     CheckError();
 
-    glDrawElements(GL_TRIANGLES, meshes[sceneObj.meshId]->mNumFaces * 3,
-                   GL_UNSIGNED_INT, NULL);
-    CheckError();
 
-    if (sceneObj.distance > 0.0 && sceneObj.speed > 0.0) animateObject(index);
+    if (sceneObj.meshId == 56 || sceneObj.meshId == 57)
+    {
+      animateObject(index);
+      printf("%f\n", sceneObj.pose);
+    }
+    else
+    {
+      sceneObj.pose = 0.0;
+    }
+
+
 
     int nBones = meshes[sceneObj.meshId]->mNumBones;
     if(nBones == 0)
@@ -511,6 +529,11 @@ void drawMesh(int index)
         boneTransforms[i] = mat4(0.0);
     calculateAnimPose(meshes[sceneObj.meshId], scenes[sceneObj.meshId], 0, sceneObj.pose, boneTransforms);
     glUniformMatrix4fv(uBoneTransforms, nBones, GL_TRUE, (const GLfloat *)boneTransforms);
+
+
+    glDrawElements(GL_TRIANGLES, meshes[sceneObj.meshId]->mNumFaces * 3,
+                       GL_UNSIGNED_INT, NULL);
+    CheckError();
 }
 
 //----------------------------------------------------------------------------
@@ -720,16 +743,19 @@ static void adjustObjectDistance(vec2 ob_di)
 {
   if (avoidSkip()) {
     sceneObjs[currObject].distance += ob_di[0];
+    sceneObjs[currObject].speed += ob_di[1];
+    if(sceneObjs[currObject].speed <= 0)
+    {
+      sceneObjs[currObject].speed = 0;
+    }
+    if(sceneObjs[currObject].distance <= 0)
+    {
+      sceneObjs[currObject].distance = 0.0;
+    }
   }
 }
 
 // Part B - D: add callbacks to change speed
-static void adjustObjectSpeed(vec2 ob_sp)
-{
-  if (avoidSkip()) {
-    sceneObjs[currObject].speed += ob_sp[0];
-  }
-}
 
 static void mainmenu(int id)
 {
@@ -746,8 +772,8 @@ static void mainmenu(int id)
                          adjustAngleZTexscale, mat2(400, 0, 0, 15) );
     }
     if (id == 95 && currObject>=0) {
-        setToolCallbacks(adjustObjectDistance, mat2(1000.0, 0, 0, 1000.0),
-                         adjustObjectSpeed, mat2(10.0, 0, 0, 10.0));
+        setToolCallbacks(adjustObjectDistance, mat2(5000.0, 0, 0, 500.0),
+                         adjustObjectDistance, mat2(5000.0, 0, 0, 500.0));
     }
     if (id == 97 && currObject >= 0)
     {
