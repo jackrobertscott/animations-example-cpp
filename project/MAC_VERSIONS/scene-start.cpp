@@ -775,6 +775,13 @@ static void mainmenu(int id)
         setToolCallbacks(adjustObjectDistance, mat2(5000.0, 0, 0, 500.0),
                          adjustObjectDistance, mat2(5000.0, 0, 0, 500.0));
     }
+    if (id == 96 && currObject>=0) {
+    
+        sceneObjs[currObject].speed = 10000.0;
+        sceneObjs[currObject].distance = 2500;
+
+
+    }
     if (id == 97 && currObject >= 0)
     {
       toolObj = currObject;
@@ -829,6 +836,7 @@ static void makeMenu()
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
     glutAddMenuEntry("Distance/Speed", 95);
+    glutAddMenuEntry("Super Ninja Hologram!", 96);
     glutAddMenuEntry("Ground Waves",98);
     glutAddMenuEntry("Object Waves",97);
     glutAddMenuEntry("EXIT", 99);
