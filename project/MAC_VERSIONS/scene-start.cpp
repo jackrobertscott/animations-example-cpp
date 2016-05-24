@@ -83,6 +83,7 @@ typedef struct {
     float distance, speed, direction, position;
     float pose;
     float waves;
+    int ninjaon = 0; //is super ninja on
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -91,6 +92,7 @@ SceneObject sceneObjs[maxObjects]; // An array storing the objects currently in 
 int nObjects = 0;    // How many objects are currenly in the scene.
 int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
+
 
 // custom variables
 
@@ -411,12 +413,6 @@ void init( void )
     sceneObjs[2].texId = 0; // Plain texture
     sceneObjs[2].brightness = 0.3; // The light's brightness is 5 times this (below).
 
-    addObject(55); // Sphere for the second light
-    sceneObjs[2].loc = vec4(-2.0, 1.0, 1.0, 1.0);
-    sceneObjs[2].scale = 0.2;
-    sceneObjs[2].texId = 0; // Plain texture
-    sceneObjs[2].brightness = 0.2; // The light's brightness is 5 times this (below).
-
     addObject(rand() % numMeshes); // A test mesh
     // addObject(56); // Monkey head
     // addObject(57); // Gingerbread Man
@@ -501,7 +497,6 @@ void drawMesh(int index)
     if (sceneObj.meshId == 56 || sceneObj.meshId == 57)
     {
       animateObject(index);
-      printf("%f\n", sceneObj.pose);
     }
     else
     {
@@ -776,10 +771,20 @@ static void mainmenu(int id)
                          adjustObjectDistance, mat2(5000.0, 0, 0, 500.0));
     }
     if (id == 96 && currObject>=0) {
-    
-        sceneObjs[currObject].speed = 10000.0;
-        sceneObjs[currObject].distance = 2500;
 
+
+        if(sceneObjs[currObject].ninjaon == 1)
+        {
+          sceneObjs[currObject].speed = 100.0;
+          sceneObjs[currObject].distance = 5000;
+          sceneObjs[currObject].ninjaon = 0;
+        }
+        else if(sceneObjs[currObject].ninjaon == 0)
+        {
+          sceneObjs[currObject].speed = 10000.0;
+          sceneObjs[currObject].distance = 2500;
+          sceneObjs[currObject].ninjaon = 1;
+        }
 
     }
     if (id == 97 && currObject >= 0)

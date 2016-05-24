@@ -7,94 +7,103 @@
  #version 120
 
 varying vec2 texCoord;  // The third coordinate is always 0.0 and is discarded
-varying vec4 fPosition;
-varying vec4 fNormal;
+varying vec3 fPosition, fNormal;
 varying mat4 boneTransform;
 
 uniform sampler2D texture;
 uniform vec3 AmbientProduct, DiffuseProduct, SpecularProduct;
 uniform mat4 ModelView;
-uniform mat4 Projection;
-uniform vec4 LightPosition1;
-uniform vec4 LightPosition2;
+uniform vec4 LightPosition1, LightPosition2;
+
 uniform float Shininess;
 uniform float TexScale;
-uniform float Waves;
+
+//structure to sort the lights better
+struct LightStruct {
+  vec3 intensity;
+  vec4 direction;
+  vec3 position;
+  float attenuation;
+
+  vec3 ambient;
+  vec3 diffuse;
+  vec3 specular;
+};
+
+LightStruct light1;
+LightStruct light2;
 
 void main()
 {
+
     vec3 materialSpecularColor = vec3(1.0, 1.0, 1.0);
+    vec4 fpos = vec4(fPosition, 1.0);
 
-    //normalMatrix
+    // Transform vertex position into eye coordinates
+    vec3 pos = (ModelView * fpos).xyz;
 
-    vec4 fpos = vec4(ModelView * fPosition);
-    vec3 light2pos = vec4(ModelView * LightPosition2).xyz;
-    vec3 light1pos = vec4(ModelView * LightPosition1).xyz;
-
-    vec3 N = normalize(ModelView * fNormal).xyz;
+    // Transform vertex normal into eye coordinates (assumes scaling
+    // is uniform across dimensions)
+    vec3 N = normalize(ModelView * vec4(fNormal, 0.0)).xyz;
 
     /////////////
     // Light 1 //
     /////////////
 
-    // The vector to the light from the fragment/Pixel
-    vec3 Lvec1 = LightPosition1.xyz - fpos.xyz;
+    vec3 L1 = normalize(LightPosition1.xyz - pos); // Direction to the light source
+    vec3 E1 = normalize(-pos);                     // Direction to the eye/camera
+    vec3 H1 = normalize(L1 + E1);                  // Halfway vector
 
-    // Part 1 - G: lighting calculations
-    float lightToObject = length(Lvec1);
-    float distance = 1.0 / (1.0 + lightToObject + (lightToObject * lightToObject)); // Formula: 1/(a+bd+cd^2)
+    float Kdif1 = max(dot(N, L1), 0.0);                 //diffuse term
+    float Kspc1 = pow(max(dot(N, H1), 0.0), Shininess); //specular term
 
-    // Unit direction vectors for Blinn-Phong shading calculation
-    vec3 L1 = normalize( Lvec1 );   // Direction to the light source
-    vec3 E1 = normalize( -light1pos );   // Direction to the eye/camera
-    vec3 H1 = normalize( L1 + E1 );  // Halfway vector
+    //attenuation calculations.
+    float lightToObject = length(LightPosition1.xyz - pos);
+    light1.attenuation = 1.0 / (1.0 + lightToObject + (lightToObject * lightToObject)); // Formula: 1/(a+bd+cd^2)
 
-    //intensity of diffuse reflection.
-    float Kd1 = clamp( dot(N, L1), 0.0, 1.0 );
-    vec3 diffuse1 = (Kd1 * DiffuseProduct);
+    //light properties
+    light1.ambient = light1.attenuation * (AmbientProduct);
+    light1.diffuse = light1.attenuation * (DiffuseProduct * Kdif1);
+    light1.specular = light1.attenuation * (SpecularProduct * Kspc1);
 
-    //intensity of specular reflection.
-    float Ks1 = pow( max(dot(N , H1), 0.0), Shininess );
-    vec3 specular1 = (materialSpecularColor * Ks1 * SpecularProduct);
-
-    if (dot(N, L1) < 0.0 ) {
-        specular1 = vec3(0.0, 0.0, 0.0);
-    }
-
-    vec3 Light1 = ((diffuse1 + specular1) * distance);
+    light1.intensity = (light1.ambient + light1.diffuse + light1.specular);
 
     /////////////
     // Light 2 //
     /////////////
 
-    // The vector to the light from the origin
-    vec3 Lvec2 = ((vec4(-1.0,1.0,-1.0,1.0) * LightPosition2) * ModelView).xyz;
+    //clamping it improved the light.
+    float dirx = clamp(-LightPosition2.x, -3.0, 3.0);
+    float diry = clamp(-LightPosition2.y, -3.0, 3.0);
+    float dirz = clamp(-LightPosition2.z, -3.0, 3.0);
 
-    // Unit direction vectors for Blinn-Phong shading calculation
-    vec3 L2 = normalize( Lvec2 );   // Direction to the origin.
-    vec3 E2 = normalize( -light2pos );   // Direction to the eye/camera
-    vec3 H2 = normalize( L2 + E2 );  // Halfway vector
+    vec4 LightDirection = vec4(dirx, diry, dirz, 0.0);
 
-    float Kd2 = clamp( dot(N, L2), 0.0, 1.0 );
-    vec3 diffuse2 = (Kd2 * DiffuseProduct);
+    light2.direction = LightDirection;
+    vec3 L2 = normalize(-light2.direction).xyz; //to origin
+    vec3 E2 = normalize(-pos);  //to Camera
+    vec3 H2 = normalize(L2 + E2); //halfway vector
 
-    float Ks2 = pow( max(dot(N, H2), 0.0), Shininess );
-    vec3 specular2 = (materialSpecularColor * Ks2 * SpecularProduct);
+    //diffuse and specular terms
+    float Kdif2 = max(dot(N, L2), 0.0);
+    float Kspc2 = pow(max(dot(N, H2), 0.0), Shininess);
 
-    if (dot(L2, N) < 0.0 ) {
-        specular2 = vec3(0.0, 0.0, 0.0);
-    }
+    //light 2 properties
+    light2.ambient = AmbientProduct;
+    light2.diffuse = DiffuseProduct * Kdif2;
+    light2.specular = SpecularProduct * Kspc2 * materialSpecularColor;
 
-    vec3 Light2 = specular2 + diffuse2;
+    light2.intensity = (light2.ambient + light2.diffuse + light2.specular);
 
     //////////////////
     // Illumination //
     //////////////////
 
     // globalAmbient is independent of distance from the light source
-    vec3 globalAmbient = vec3(0.1, 0.1, 0.1);
+    vec3 globalAmbient = vec3(0.2, 0.2, 0.2);
 
-    vec3 colormod = globalAmbient + AmbientProduct + Light1 + Light2;
+    //the total light contribution.
+    vec3 colormod = globalAmbient + (light1.intensity * 5.0) + (light2.intensity * 1.5);
 
     gl_FragColor = texture2D( texture, TexScale * texCoord * 2.0 ) * vec4(colormod, 1.0); // 1.0 is the opacity
 }

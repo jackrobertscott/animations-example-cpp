@@ -13,8 +13,8 @@ attribute vec4 vBoneIDs;
 attribute vec4 vBoneWeights;
 
 varying vec2 texCoord;
-varying vec4 fPosition;
-varying vec4 fNormal;
+varying vec3 fPosition;
+varying vec3 fNormal;
 varying mat4 boneTransform;
 
 uniform mat4 ModelView;
@@ -48,8 +48,8 @@ void main()
     }
 
     // Transform vertex position and vertex normal into eye coordinates (assumes scaling is uniform across dimensions)
-    fPosition = vTransPos;
-    fNormal = vTransNorm;
+    fPosition = vTransPos.xyz;
+    fNormal = vTransNorm.xyz;
 
     gl_Position = Projection * ModelView * vTransPos;
     texCoord = vTexCoord;
