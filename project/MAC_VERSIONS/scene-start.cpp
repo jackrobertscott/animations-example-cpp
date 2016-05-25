@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <time.h>
 
+
 // Open Asset Importer header files (in ../../assimp--3.0.1270/include)
 // This is a standard open source library for loading meshes, see gnatidread.h
 #include <assimp/cimport.h>
@@ -83,7 +84,10 @@ typedef struct {
     float distance, speed, direction, position;
     float pose;
     float waves;
-    int ninjaon = 0; //is super ninja on
+    int ninjaon = 0; //is super ninja on toggle
+    //these two new variables are for the scene physics
+    vec4 velocity_f = (0.0, 0.0, 0.0, 0.0);
+    vec4 deltaS = (0.0, 0.0, 0.0, 0.0);
 } SceneObject;
 
 const int maxObjects = 1024; // Scenes with more than 1024 objects seem unlikely
@@ -92,10 +96,14 @@ SceneObject sceneObjs[maxObjects]; // An array storing the objects currently in 
 int nObjects = 0;    // How many objects are currenly in the scene.
 int currObject = -1; // The current object
 int toolObj = -1;    // The object currently being modified
+int ObjectPhysics = 0; //toggle for physics on == 1, off == 0;
 
+// custom variables to start a timer for the physics calculations
+clock_t startTime;
+clock_t endTime;
+clock_t clockTicksTaken;
 
-// custom variables
-
+//used to stop mouse actions from skipping
 bool mouseEngaged = false;
 
 static bool avoidSkip() {
@@ -333,6 +341,7 @@ static void addObject(int id)
     sceneObjs[nObjects].direction = 0.0;
     sceneObjs[nObjects].position = 0.0;
 
+    //sets the speed and distance for the animated objects
     if(id > 55)
     {
       sceneObjs[nObjects].distance = 5000.0;
@@ -346,7 +355,7 @@ static void addObject(int id)
       sceneObjs[nObjects].angles[1] = 0.0;
     }
 
-
+    //intialises the waves toggle to off for every object
     sceneObjs[nObjects].waves = 0.0;
 
     toolObj = currObject = nObjects++;
@@ -429,6 +438,7 @@ void init( void )
 // Part B - D: animate object
 void animateObject(int index)
 {
+
     // calculate angles for object orientation
     float roll	= (float)((int)floor(sceneObjs[index].angles[0]) % 360) * M_PI / 180;
     float pitch	= (float)((int)floor(sceneObjs[index].angles[1]) % 360) * M_PI / 180;
@@ -456,6 +466,75 @@ void animateObject(int index)
     }
 
 }
+//applys gravity relative to time and the gravity constant to an object
+void sceneGravity(int index)
+{
+  endTime = clock(); //gets the clock
+  clockTicksTaken = endTime - startTime; //finds the difference
+
+  double timeInSeconds = (clockTicksTaken / (double) CLOCKS_PER_SEC); //convert it to seconds
+
+  float gravity = -0.38; //arbitrary can be changed for various effects
+
+  //newtonian equations to caluclate velocity and displacement
+  sceneObjs[index].velocity_f.w += timeInSeconds * gravity;
+  sceneObjs[index].deltaS.w = (timeInSeconds * sceneObjs[index].velocity_f.w) + ((timeInSeconds * timeInSeconds ) * gravity * 0.5);
+  //applys the desiplacement to the location of the object
+  vec4 change = vec4(0.0, sceneObjs[index].deltaS.w, 0.0, 0.0);
+  sceneObjs[index].loc += change;
+
+  //if the object is below the floor make sure to set it to the floor and the other things to zero.
+  if(sceneObjs[index].loc.y < 0.0)
+  {
+    sceneObjs[index].loc.y = 0.0;
+    sceneObjs[index].velocity_f.w = 0.0;
+    sceneObjs[index].deltaS.w = 0.0;
+  }
+
+}
+
+//calcualtes the x, y and z components of an object that has jsut been thrown/shot from a cannon
+void objectPhysics(int index)
+{
+  //get clock time again
+  endTime = clock();
+  clockTicksTaken = endTime - startTime;
+  double timeInSeconds = (clockTicksTaken / (double) CLOCKS_PER_SEC);
+
+  //wind resistance again change this for fun effects.
+  float windres = -1.0;
+
+  //in the y direction... this competes with gravity.
+  sceneObjs[index].velocity_f.y += timeInSeconds * windres;
+  sceneObjs[index].deltaS.y = (timeInSeconds * sceneObjs[index].velocity_f.y) + ((timeInSeconds * timeInSeconds ) * windres * 0.5);
+  if(sceneObjs[index].velocity_f.y < 0.0)
+  {
+    sceneObjs[index].velocity_f.y = 0.0;
+    sceneObjs[index].deltaS.y = 0.0;
+  }
+  //in the x direction
+  sceneObjs[index].velocity_f.x += timeInSeconds * windres;
+  sceneObjs[index].deltaS.x = (timeInSeconds * sceneObjs[index].velocity_f.x) + ((timeInSeconds * timeInSeconds ) * windres * 0.5);
+  if(sceneObjs[index].velocity_f.x < 0.0)
+  {
+    sceneObjs[index].velocity_f.x = 0.0;
+    sceneObjs[index].deltaS.x = 0.0;
+  }
+  //in the z direction
+  sceneObjs[index].velocity_f.z += timeInSeconds * windres;
+  sceneObjs[index].deltaS.z = (timeInSeconds * sceneObjs[index].velocity_f.z) + ((timeInSeconds * timeInSeconds ) * windres * 0.5);
+  if(sceneObjs[index].velocity_f.z < 0.0)
+  {
+    sceneObjs[index].velocity_f.z = 0.0;
+    sceneObjs[index].deltaS.z = 0.0;
+  }
+
+  //apply the full effects of the throw to the objects location.
+  vec4 change = vec4(sceneObjs[index].deltaS);
+  sceneObjs[index].loc += change;
+
+}
+
 
 //----------------------------------------------------------------------------
 
@@ -482,8 +561,10 @@ void drawMesh(int index)
     // Set the model matrix - this should combine translation, rotation and scaling based on what's
     // in the sceneObj structure (see near the top of the program).
 
-    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
 
+
+    mat4 model = Translate(sceneObj.loc) * Scale(sceneObj.scale) * RotateZ(sceneObj.angles[2]) * RotateY(sceneObj.angles[1]) * RotateX(-sceneObj.angles[0]);
+  //  printf("%f, %f, %f\n", sceneObj.loc.x, sceneObj.loc.y, sceneObj.loc.z);
     // Set the model-view matrix for the shaders
     glUniformMatrix4fv( modelViewU, 1, GL_TRUE, view * model );
 
@@ -493,7 +574,19 @@ void drawMesh(int index)
     glBindVertexArrayAPPLE( vaoIDs[sceneObj.meshId] );
     CheckError();
 
+    //if physics is enabled then we do these
+    if(ObjectPhysics == 1)
+    {
+      //if an object is above the floor it needs to be brought back to earth.
+      if(sceneObj.loc.y > 0 && index != 1 && index != 2)
+      {
+        sceneGravity(index);
+      }
+      //apply velocity translations.
+      objectPhysics(index);
+    }
 
+    //animate the gingerbread man and the monkey
     if (sceneObj.meshId == 56 || sceneObj.meshId == 57)
     {
       animateObject(index);
@@ -502,8 +595,6 @@ void drawMesh(int index)
     {
       sceneObj.pose = 0.0;
     }
-
-
 
     int nBones = meshes[sceneObj.meshId]->mNumBones;
     if(nBones == 0)
@@ -717,6 +808,61 @@ static void materialMenu(int id)
     }
 }
 
+//my custom physicsMenu
+static void physicsMenu(int id)
+{
+
+  switch(id){
+    case 109:
+        {
+          if(ObjectPhysics == 1)
+          {
+            ObjectPhysics = 0;
+            startTime = clock();
+          }
+          else if(ObjectPhysics == 0)
+          {
+            ObjectPhysics = 1;
+          }
+          break;
+        }
+    case 120:
+        printf("v_x set to 2\n" );
+        sceneObjs[currObject].velocity_f.x = 4.0;
+        startTime = clock();
+        break;
+    case 121:
+        sceneObjs[currObject].velocity_f.x = 4.0;
+        sceneObjs[currObject].velocity_f.y = 2.0;
+        startTime = clock();
+        break;
+    case 122:
+        sceneObjs[currObject].velocity_f.x = 4.0;
+        sceneObjs[currObject].velocity_f.z = 4.0;
+        startTime = clock();
+        break;
+    case 130:
+        sceneObjs[currObject].velocity_f.y = 2.0;
+        startTime = clock();
+        break;
+    case 131:
+        sceneObjs[currObject].velocity_f.y = 2.0;
+        sceneObjs[currObject].velocity_f.z = 4.0;
+        startTime = clock();
+        break;
+    case 140:
+        sceneObjs[currObject].velocity_f.z = 4.0;
+        startTime = clock();
+        break;
+    case 141:
+        sceneObjs[currObject].velocity_f.x = 4.0;
+        sceneObjs[currObject].velocity_f.y = 2.0;
+        sceneObjs[currObject].velocity_f.z = 4.0;
+        startTime = clock();
+        break;
+    }
+}
+
 static void adjustAngleYX(vec2 angle_yx)
 {
   if (avoidSkip()) {
@@ -770,9 +916,10 @@ static void mainmenu(int id)
         setToolCallbacks(adjustObjectDistance, mat2(5000.0, 0, 0, 500.0),
                          adjustObjectDistance, mat2(5000.0, 0, 0, 500.0));
     }
+
+    //this is super ninja hologram its just toggles the speed between very fast and regular which produces
+    //a hologram type effect which i find entertaining.
     if (id == 96 && currObject>=0) {
-
-
         if(sceneObjs[currObject].ninjaon == 1)
         {
           sceneObjs[currObject].speed = 100.0;
@@ -787,6 +934,7 @@ static void mainmenu(int id)
         }
 
     }
+    //toggle waves for ground and object.
     if (id == 97 && currObject >= 0)
     {
       toolObj = currObject;
@@ -810,6 +958,7 @@ static void mainmenu(int id)
         sceneObjs[0].waves = 1.0;
       }
     }
+
     if (id == 99) exit(0);
 }
 
@@ -821,6 +970,15 @@ static void makeMenu()
     int materialMenuId = glutCreateMenu(materialMenu);
     glutAddMenuEntry("R/G/B/All",10);
     glutAddMenuEntry("Ambient/Diffuse/Specular/Shine",20);
+    int physicsMenuId = glutCreateMenu(physicsMenu);
+    glutAddMenuEntry("toggle physics", 109);
+    glutAddMenuEntry("Throw X axis", 120);
+    glutAddMenuEntry("Throw XY axis", 121);
+    glutAddMenuEntry("Throw XZ axis", 122);
+    glutAddMenuEntry("Throw Y axis", 130);
+    glutAddMenuEntry("Throw YZ axis", 131);
+    glutAddMenuEntry("Throw Z axis", 140);
+    glutAddMenuEntry("Throw ZXY axis", 141);
 
     int texMenuId = createArrayMenu(numTextures, textureMenuEntries, texMenu);
     int groundMenuId = createArrayMenu(numTextures, textureMenuEntries, groundMenu);
@@ -840,10 +998,11 @@ static void makeMenu()
     glutAddSubMenu("Texture",texMenuId);
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
+    glutAddSubMenu("Physics Menu",physicsMenuId);
     glutAddMenuEntry("Distance/Speed", 95);
     glutAddMenuEntry("Super Ninja Hologram!", 96);
-    glutAddMenuEntry("Ground Waves",98);
     glutAddMenuEntry("Object Waves",97);
+    glutAddMenuEntry("Ground Waves",98);
     glutAddMenuEntry("EXIT", 99);
     glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
