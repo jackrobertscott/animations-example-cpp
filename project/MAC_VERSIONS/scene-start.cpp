@@ -449,21 +449,36 @@ void animateObject(int index)
     sceneObjs[index].loc += change;
     sceneObjs[index].position += sceneObjs[index].direction * sceneObjs[index].speed;
 
+
     // change direction if object reaches limits
     if (sceneObjs[index].position >= sceneObjs[index].distance) {
       sceneObjs[index].position = sceneObjs[index].distance;
       sceneObjs[index].direction *= -1.0;
+
     } else if (sceneObjs[index].position <= 0.0) {
       sceneObjs[index].position = 0.0;
       sceneObjs[index].direction *= -1.0;
+
     }
 
-    sceneObjs[index].pose = sceneObjs[index].pose + 1.0;
     // update frame
-    if(sceneObjs[index].pose == 40.0)
+    if(sceneObjs[index].direction > 0)
     {
-      sceneObjs[index].pose = 0.0;
+      sceneObjs[index].pose--;
+      if(sceneObjs[index].pose < 0)
+      {
+        sceneObjs[index].pose = 40;
+      }
     }
+    if(sceneObjs[index].direction < 0)
+    {
+      sceneObjs[index].pose++;
+      if(sceneObjs[index].pose > 40)
+      {
+        sceneObjs[index].pose = 1;
+      }
+    }
+
 
 }
 //applys gravity relative to time and the gravity constant to an object
