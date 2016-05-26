@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <time.h>
+#include <fstream>
 
 
 // Open Asset Importer header files (in ../../assimp--3.0.1270/include)
@@ -797,6 +798,31 @@ static void lightMenu(int id)
     }
 }
 
+static void fileSaveMenu(int id)
+{
+    if (id == 90)
+    {
+        ofstream saveFile("scene-image.txt", ios::out | ios::binary);
+        if(!saveFile) {
+            std::cout << "Cannot open file..." << std::endl;
+            return;
+        }
+        saveFile.write((char *) &sceneObjs[currObject], sizeof(sceneObjs[currObject]));
+        saveFile.close();
+    }
+    else if (id == 91)
+    {
+        ifstream loadFile("scene-image.txt", ios::in | ios::binary);
+        if(!loadFile) {
+            std::cout << "Cannot open file..." << std::endl;
+            return;
+        }
+        toolObj = currObject = nObjects++;
+        loadFile.read((char *) &sceneObjs[currObject], sizeof(sceneObjs[currObject]));
+        loadFile.close();
+    }
+}
+
 static int createArrayMenu(int size, const char menuEntries[][128], void(*menuFn)(int))
 {
     int nSubMenus = (size-1)/10 + 1;
@@ -1025,6 +1051,10 @@ static void makeMenu()
     glutAddMenuEntry("Move Light 2",80);
     glutAddMenuEntry("R/G/B/All Light 2",81);
 
+    int fileSaveMenuId = glutCreateMenu(fileSaveMenu);
+    glutAddMenuEntry("Save", 90);
+    glutAddMenuEntry("Load", 91);
+
     glutCreateMenu(mainmenu);
     glutAddMenuEntry("Rotate/Move Camera",50);
     glutAddSubMenu("Add object", objectId);
@@ -1037,6 +1067,7 @@ static void makeMenu()
     glutAddSubMenu("Ground Texture",groundMenuId);
     glutAddSubMenu("Lights",lightMenuId);
     glutAddSubMenu("Physics Menu",physicsMenuId);
+    glutAddSubMenu("Save/Load Current Object",fileSaveMenuId);
     glutAddMenuEntry("Distance/Speed", 95);
     glutAddMenuEntry("Super Ninja Hologram!", 96);
     glutAddMenuEntry("Object Waves",97);
