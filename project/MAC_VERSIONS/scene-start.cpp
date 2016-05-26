@@ -364,6 +364,21 @@ static void addObject(int id)
     glutPostRedisplay();
 }
 
+static void deleteObject() {
+  for (int i = nObjects - 1; i > 0; i--) {
+    if (currObject < i) {
+      sceneObjs[i - 1] = sceneObjs[i];
+    }
+  }
+  toolObj = currObject = --nObjects - 1;
+}
+
+static void duplicateObject() {
+  memcpy(&sceneObjs[nObjects], &sceneObjs[nObjects - 1], sizeof(sceneObjs[nObjects]));
+  sceneObjs[nObjects].loc += vec4(1.0, 0.0, 0.0, 0.0);
+  toolObj = currObject = nObjects++;
+}
+
 //------The init function-----------------------------------------------------
 
 void init( void )
@@ -921,6 +936,12 @@ static void mainmenu(int id)
         setToolCallbacks(adjustLocXZ, camRotZ(),
                          adjustScaleY, mat2(0.05, 0, 0, 10) );
     }
+    if (id == 42 && currObject>=0) {
+        deleteObject();
+    }
+    if (id == 43 && currObject>=0) {
+        duplicateObject();
+    }
     if (id == 50)
         doRotate();
     if (id == 55 && currObject>=0) {
@@ -1008,6 +1029,8 @@ static void makeMenu()
     glutAddMenuEntry("Rotate/Move Camera",50);
     glutAddSubMenu("Add object", objectId);
     glutAddMenuEntry("Position/Scale", 41);
+    glutAddMenuEntry("Delete Object", 42);
+    glutAddMenuEntry("Duplicate Object", 43);
     glutAddMenuEntry("Rotation/Texture Scale", 55);
     glutAddSubMenu("Material", materialMenuId);
     glutAddSubMenu("Texture",texMenuId);
