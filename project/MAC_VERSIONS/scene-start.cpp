@@ -374,7 +374,7 @@ static void deleteObject() {
 }
 
 static void duplicateObject() {
-  memcpy(&sceneObjs[nObjects], &sceneObjs[nObjects - 1], sizeof(sceneObjs[nObjects]));
+  memcpy(&sceneObjs[nObjects], &sceneObjs[currObject], sizeof(sceneObjs[nObjects]));
   sceneObjs[nObjects].loc += vec4(1.0, 0.0, 0.0, 0.0);
   toolObj = currObject = nObjects++;
 }
