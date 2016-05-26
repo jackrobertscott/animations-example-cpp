@@ -807,7 +807,15 @@ static void fileSaveMenu(int id)
             std::cout << "Cannot open file..." << std::endl;
             return;
         }
-        saveFile.write((char *) &sceneObjs[currObject], sizeof(sceneObjs[currObject]));
+        saveFile << nObjects << endl;
+	    saveFile << currObject << endl;
+	    saveFile << toolObj << endl;
+	    saveFile << viewDist << endl;
+	    saveFile << camRotSidewaysDeg << endl;
+	    saveFile << camRotUpAndOverDeg;
+        for (int i = 0; i < nObjects; i++) {
+            saveFile.write((char *) &sceneObjs[i], sizeof(sceneObjs[i]));
+        }
         saveFile.close();
     }
     else if (id == 91)
@@ -817,8 +825,15 @@ static void fileSaveMenu(int id)
             std::cout << "Cannot open file..." << std::endl;
             return;
         }
-        toolObj = currObject = nObjects++;
-        loadFile.read((char *) &sceneObjs[currObject], sizeof(sceneObjs[currObject]));
+        loadFile >> nObjects;
+	    loadFile >> currObject;
+	    loadFile >> toolObj;
+	    loadFile >> viewDist;
+	    loadFile >> camRotSidewaysDeg;
+	    loadFile >> camRotUpAndOverDeg;
+        for (int i = 0; i < nObjects; i++) {
+            loadFile.read((char *) &sceneObjs[i], sizeof(sceneObjs[i]));
+        }
         loadFile.close();
     }
 }
